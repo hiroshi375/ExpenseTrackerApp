@@ -1,5 +1,15 @@
 # Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
 
+# -----------------------------
+# Amplify Gen2 build artifacts
+# -----------------------------
+.amplify/
+amplify_outputs.json
+
+# CDK outputs
+cdk.out/
+.amplify/artifacts/cdk.out/
+
 # dependencies
 node_modules/
 
