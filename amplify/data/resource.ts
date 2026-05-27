@@ -3,6 +3,7 @@ import { a, defineData, type ClientSchema } from "@aws-amplify/backend";
 const schema = a
   .schema({
     User: a.model({
+      userId: a.id().required(),
       username: a.string().required(),
       email: a.email().required(),
       role: a.string(),

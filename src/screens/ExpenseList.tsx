@@ -1,12 +1,12 @@
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { signOut } from "aws-amplify/auth";
 import { generateClient } from "aws-amplify/data";
 import { useCallback, useEffect, useState } from "react";
 import { FlatList, RefreshControl, StyleSheet, View } from "react-native";
-import { Card, FAB, Text } from "react-native-paper";
+import { Button, Card, FAB, Text } from "react-native-paper";
 import type { Schema } from "../../amplify/data/resource";
 import type { RootStackParamList } from "../navigation/RootNavigator";
-
 const client = generateClient<Schema>();
 
 export default function ExpenseList() {
@@ -23,16 +23,51 @@ export default function ExpenseList() {
   // -----------------------------
   const fetchExpenses = async () => {
     try {
+      // -----------------------------
+      // Transaction一覧取得
+      // -----------------------------
       const result = await client.models.Transaction.list({
         authMode: "userPool",
       });
+      console.log("Transactions:", JSON.stringify(result.data, null, 2));
+      // -----------------------------
+      // User一覧取得
+      // -----------------------------
+      const users = await client.models.User.list({
+        authMode: "userPool",
+      });
+      // ★追加
+      console.log("Users:", JSON.stringify(users.data, null, 2));
+      // -----------------------------
+      // userId → username 変換Map
+      // -----------------------------
+      const userMap = new Map();
 
-      const sorted = result.data.sort((a, b) => {
+      users.data.forEach((u) => {
+        console.log("MAP:", u.userId, u.username);
+        userMap.set(u.userId, u.username);
+      });
+      // -----------------------------
+      // Transactionへ username追加
+      // -----------------------------
+      const formatted = result.data.map((item) => {
+        console.log("MATCH:", item.userId, userMap.get(item.userId));
+        return {
+          ...item,
+
+          userName: userMap.get(item.userId) ?? "不明",
+        };
+      });
+
+      const sorted = formatted.sort((a, b) => {
         return (
           new Date(b.transactionDate).getTime() -
           new Date(a.transactionDate).getTime()
         );
       });
+      // -----------------------------
+      // State更新
+      // -----------------------------
       setExpenses(sorted);
     } catch (e) {
       console.error(e);
@@ -106,6 +141,11 @@ export default function ExpenseList() {
       flex: 1,
       textAlign: "right",
     },
+    center: {
+      fontSize: 13,
+      flex: 1,
+      textAlign: "center",
+    },
     status: {
       fontSize: 12,
       color: "gray",
@@ -145,11 +185,9 @@ export default function ExpenseList() {
               {/* 3行目 */}
               <View style={styles.row}>
                 <Text style={styles.left}>{item.paymentMethod}</Text>
-                <Text style={styles.right}>{item.userId}</Text>
-              </View>
-
-              {/* 4行目（単独） */}
-              <View style={styles.row}>
+                <Text style={[styles.center, { textAlign: "center" }]}>
+                  {item.userName}
+                </Text>
                 <Text
                   style={{
                     fontSize: 12,
@@ -168,7 +206,23 @@ export default function ExpenseList() {
           </Card>
         )}
       />
-
+      {/* サインアウトボタン */}
+      <Button
+        mode="outlined"
+        onPress={async () => {
+          try {
+            await signOut();
+          } catch (e) {
+            console.log("sign out error:", e);
+          }
+        }}
+        style={{
+          marginTop: 8,
+          marginBottom: 40,
+        }}
+      >
+        サインアウト
+      </Button>
       <FAB
         icon="plus"
         style={{

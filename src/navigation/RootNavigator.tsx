@@ -1,16 +1,110 @@
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { generateClient } from "aws-amplify/data";
+import type { Schema } from "../../amplify/data/resource";
 import ExpenseCreate from "../screens/ExpenseCreate";
 import ExpenseList from "../screens/ExpenseList";
+
+import { getCurrentUser } from "aws-amplify/auth";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, View } from "react-native";
+import CreateProfileScreen from "../screens/CreateProfileScreen";
+
+const client = generateClient<Schema>();
+
 export type RootStackParamList = {
   ExpenseList: undefined;
   ExpenseCreate: undefined;
-  Dummy: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function RootNavigator() {
+  // -----------------------------
+  // State
+  // -----------------------------
+  const [loading, setLoading] = useState(true);
+
+  const [needsProfile, setNeedsProfile] = useState(false);
+  // -----------------------------
+  // 初回ログイン確認
+  // -----------------------------
+  useEffect(() => {
+    checkProfile();
+  }, []);
+
+  const checkProfile = async () => {
+    try {
+      const user = await getCurrentUser();
+
+      const email = user.signInDetails?.loginId;
+
+      if (!email) {
+        setLoading(false);
+        return;
+      }
+
+      // -----------------------------
+      // Userテーブル確認
+      // -----------------------------
+      const result = await client.models.User.list({
+        filter: {
+          email: {
+            eq: email,
+          },
+        },
+
+        authMode: "userPool",
+      });
+
+      console.log("User Check:", JSON.stringify(result, null, 2));
+
+      // -----------------------------
+      // 初回ログイン判定
+      // -----------------------------
+      if (result.data.length === 0) {
+        setNeedsProfile(true);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // -----------------------------
+  // Loading
+  // -----------------------------
+  if (loading) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
+        <ActivityIndicator />
+      </View>
+    );
+  }
+
+  // -----------------------------
+  // 初回プロフィール登録
+  // -----------------------------
+  if (needsProfile) {
+    return (
+      <CreateProfileScreen
+        onComplete={() => {
+          setNeedsProfile(false);
+        }}
+      />
+    );
+  }
+
+  // -----------------------------
+  // Main Navigator
+  // -----------------------------
   return (
     <NavigationContainer>
       <Stack.Navigator initialRouteName="ExpenseList">

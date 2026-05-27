@@ -1,5 +1,6 @@
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { getCurrentUser } from "aws-amplify/auth";
 import { generateClient } from "aws-amplify/data";
 import { uploadData } from "aws-amplify/storage";
 import * as ImageManipulator from "expo-image-manipulator";
@@ -16,7 +17,6 @@ import {
 import { DatePickerModal } from "react-native-paper-dates";
 import type { Schema } from "../../amplify/data/resource";
 import type { RootStackParamList } from "../navigation/RootNavigator";
-
 const client = generateClient<Schema>();
 
 export default function ExpenseCreate() {
@@ -220,6 +220,7 @@ export default function ExpenseCreate() {
   // -----------------------------
   const onCreate = async () => {
     try {
+      const currentUser = await getCurrentUser();
       if (!title.trim()) {
         Alert.alert("エラー", "タイトルを入力してください");
 
@@ -257,7 +258,7 @@ export default function ExpenseCreate() {
           storeName,
           description,
           receiptImage,
-          userId: "dummy-user-id",
+          userId: currentUser.userId,
         },
 
         {
