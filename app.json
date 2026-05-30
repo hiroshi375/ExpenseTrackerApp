@@ -41,6 +41,11 @@
         }
       ]
     ],
-    "experiments": {}
+    "experiments": {},
+    "extra": {
+      "eas": {
+        "projectId": "8bf3e638-36ba-49c4-aafb-26dfbdd60939"
+      }
+    }
   }
 }
