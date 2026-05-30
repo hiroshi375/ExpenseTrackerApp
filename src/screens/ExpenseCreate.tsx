@@ -5,10 +5,10 @@ import type {
 } from "@react-navigation/native-stack";
 import { getCurrentUser } from "aws-amplify/auth";
 import { generateClient } from "aws-amplify/data";
-import { uploadData, getUrl } from "aws-amplify/storage";
+import { getUrl, uploadData } from "aws-amplify/storage";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Alert, Image, ScrollView, StyleSheet, View } from "react-native";
 import {
   ActivityIndicator,
@@ -42,7 +42,9 @@ export default function ExpenseCreate({ route }: Props) {
 
   const [loading, setLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("");
-  const [transactionDate, setTransactionDate] = useState<string>(new Date());
+  const [transactionDate, setTransactionDate] = useState<string>(
+    new Date().toISOString(),
+  );
   const [open, setOpen] = useState(false);
   const [receiptImage, setReceiptImage] = useState("");
 
@@ -67,7 +69,7 @@ export default function ExpenseCreate({ route }: Props) {
       setStoreName(item.storeName ?? "");
       setPaymentMethod(item.paymentMethod ?? "");
       if (item.transactionDate) {
-        setTransactionDate(new Date(item.transactionDate));
+        setTransactionDate(new Date(item.transactionDate).toISOString());
       }
       // receiptImage が存在する場合
       if (item.receiptImage) {
@@ -253,7 +255,7 @@ export default function ExpenseCreate({ route }: Props) {
         setDescription(json.data.description ?? "");
 
         if (json.data.transactionDate) {
-          setTransactionDate(new Date(json.data.transactionDate));
+          setTransactionDate(new Date(json.data.transactionDate).toISOString());
         }
       }
     } catch (e) {
@@ -302,7 +304,7 @@ export default function ExpenseCreate({ route }: Props) {
             title,
             amount: Number(amount),
             paymentMethod,
-            transactionDate: transactionDate.toISOString(),
+            transactionDate: transactionDate,
             storeName,
             description,
             receiptImage,
@@ -319,7 +321,7 @@ export default function ExpenseCreate({ route }: Props) {
             type: "expense",
             categoryId: "default",
             paymentMethod,
-            transactionDate: transactionDate.toISOString(),
+            transactionDate: transactionDate,
             storeName,
             description,
             receiptImage,
@@ -463,14 +465,14 @@ export default function ExpenseCreate({ route }: Props) {
             mode="single"
             visible={open}
             onDismiss={() => setOpen(false)}
-            date={transactionDate ?? undefined}
+            date={transactionDate ? new Date(transactionDate) : undefined}
             onConfirm={(params) => {
               setOpen(false);
 
               const d = params.date;
               if (!d) return;
 
-              setTransactionDate(new Date(d));
+              setTransactionDate(new Date(d).toISOString());
             }}
           />
 
