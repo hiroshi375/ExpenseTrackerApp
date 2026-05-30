@@ -25,6 +25,11 @@ const handleSignOut = async () => {
   }
 };
 
+const truncateText = (text: string | null | undefined, maxLength: number) => {
+  if (!text) return "";
+  return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text;
+};
+
 type Props = NativeStackScreenProps<RootStackParamList, "ExpenseList">;
 
 export default function ExpenseList({ navigation }: Props) {
@@ -193,8 +198,10 @@ export default function ExpenseList({ navigation }: Props) {
             <Card.Content style={{ paddingVertical: 6, paddingHorizontal: 10 }}>
               {/* 1行目 */}
               <View style={styles.row}>
-                <Text style={styles.left}>{item.title}</Text>
-                <Text style={styles.right}>{item.storeName}</Text>
+                <Text style={styles.left}>{truncateText(item.title, 18)}</Text>
+                <Text style={styles.right}>
+                  {truncateText(item.storeName, 13)}
+                </Text>
               </View>
 
               {/* 2行目 */}

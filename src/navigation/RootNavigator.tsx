@@ -116,14 +116,14 @@ export default function RootNavigator() {
           name="ExpenseList"
           component={ExpenseList}
           options={{
-            title: "Expense List",
+            title: "経費リスト",
           }}
         />
         <Stack.Screen
           name="ExpenseCreate"
           component={ExpenseCreate}
           options={{
-            title: "Expense Create",
+            title: "経費登録・更新",
           }}
         />
       </Stack.Navigator>

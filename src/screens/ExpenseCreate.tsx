@@ -15,6 +15,7 @@ import {
   Button,
   Card,
   Menu,
+  Surface,
   Text,
   TextInput,
 } from "react-native-paper";
@@ -83,6 +84,7 @@ export default function ExpenseCreate({ route }: Props) {
       setAmount(String(item.amount ?? ""));
       setStoreName(item.storeName ?? "");
       setPaymentMethod(item.paymentMethod ?? "現金");
+      setDescription(item.description ?? "");
       if (item.transactionDate) {
         setTransactionDate(new Date(item.transactionDate).toISOString());
       }
@@ -415,7 +417,6 @@ export default function ExpenseCreate({ route }: Props) {
               </Text>
             </View>
           )}
-          <Text variant="titleLarge">Expense Create</Text>
 
           <TextInput
             label="件名"
@@ -548,18 +549,38 @@ export default function ExpenseCreate({ route }: Props) {
               resizeMode="contain"
             />
           ) : null}
-
-          <Button
-            mode="contained"
-            onPress={onCreate}
-            loading={loading}
+          {/* 保存ボタン */}
+          <Surface
+            elevation={4}
             style={{
-              marginTop: 20,
-              marginBottom: 20,
+              alignSelf: "center",
+              width: "95%",
+              marginTop: 24,
+              marginBottom: 60,
+              borderRadius: 14,
+              overflow: "hidden",
             }}
           >
-            保存
-          </Button>
+            <Button
+              mode="contained"
+              onPress={onCreate}
+              buttonColor="#4f5f6f"
+              textColor="#ffffff"
+              contentStyle={{
+                paddingVertical: 8,
+              }}
+              labelStyle={{
+                fontSize: 16,
+                fontWeight: "bold",
+                letterSpacing: 0.5,
+              }}
+              style={{
+                borderRadius: 14,
+              }}
+            >
+              保存
+            </Button>
+          </Surface>
         </Card.Content>
       </Card>
     </ScrollView>
