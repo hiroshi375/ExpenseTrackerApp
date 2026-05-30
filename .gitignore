@@ -4,7 +4,7 @@
 # Amplify Gen2 build artifacts
 # -----------------------------
 .amplify/
-amplify_outputs.json
+#amplify_outputs.json
 
 # CDK outputs
 cdk.out/
