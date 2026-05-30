@@ -1,6 +1,6 @@
 import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { signOut } from "aws-amplify/auth";
+import { getCurrentUser, signOut } from "aws-amplify/auth";
 import { generateClient } from "aws-amplify/data";
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -25,9 +25,18 @@ const handleSignOut = async () => {
   }
 };
 
+// 長すぎるテキストは省略するユーティリティ関数
 const truncateText = (text: string | null | undefined, maxLength: number) => {
   if (!text) return "";
   return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text;
+};
+
+// 承認ステータスの表示をわかりやすくするユーティリティ関数
+const formatApprovalStatus = (status: string | null | undefined) => {
+  if (status === "approved") return "承認済み";
+  if (status === "rejected") return "却下";
+  if (status === "pending") return "承認待ち";
+  return "未承認";
 };
 
 type Props = NativeStackScreenProps<RootStackParamList, "ExpenseList">;
@@ -35,6 +44,7 @@ type Props = NativeStackScreenProps<RootStackParamList, "ExpenseList">;
 export default function ExpenseList({ navigation }: Props) {
   const [expenses, setExpenses] = useState<any[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [canApprove, setCanApprove] = useState(false);
 
   // -----------------------------
   // データ取得
@@ -92,8 +102,33 @@ export default function ExpenseList({ navigation }: Props) {
     }
   };
 
+  // -----------------------------
+  // 承認権限の有無を確認
+  // -----------------------------
+  const fetchCurrentUserRole = async () => {
+    try {
+      const currentUser = await getCurrentUser();
+
+      const result = await client.models.User.list({
+        filter: {
+          userId: {
+            eq: currentUser.userId,
+          },
+        },
+        authMode: "userPool",
+      });
+
+      const user = result.data[0];
+
+      setCanApprove(user?.role === "approver" || user?.role === "admin");
+    } catch (e) {
+      console.error(e);
+      setCanApprove(false);
+    }
+  };
   useEffect(() => {
     fetchExpenses();
+    fetchCurrentUserRole();
   }, []);
 
   // -----------------------------
@@ -176,6 +211,7 @@ export default function ExpenseList({ navigation }: Props) {
   return (
     <View style={{ flex: 1 }}>
       <FlatList
+        style={{ flex: 1 }}
         data={expenses}
         keyExtractor={(item) => item.id}
         refreshControl={
@@ -247,7 +283,7 @@ export default function ExpenseList({ navigation }: Props) {
                             : "gray",
                     }}
                   >
-                    {item.approvalStatus ?? "未承認"}
+                    {formatApprovalStatus(item.approvalStatus)}
                   </Text>
                 </View>
               </View>
@@ -255,15 +291,47 @@ export default function ExpenseList({ navigation }: Props) {
           </Card>
         )}
       />
+
+      {/* 承認画面へボタン */}
+      {canApprove && (
+        <Surface
+          elevation={4}
+          style={{
+            alignSelf: "center",
+            width: "90%",
+            marginTop: 6,
+            marginBottom: 12,
+            borderRadius: 12,
+            overflow: "hidden",
+          }}
+        >
+          <Button
+            mode="contained"
+            onPress={() => navigation.navigate("ApprovalList")}
+            buttonColor="#5f6f7f"
+            textColor="#ffffff"
+            contentStyle={{
+              paddingVertical: 8,
+            }}
+            labelStyle={{
+              fontSize: 16,
+              fontWeight: "bold",
+            }}
+            style={{ marginTop: 8, borderRadius: 12 }}
+          >
+            承認画面へ
+          </Button>
+        </Surface>
+      )}
       {/* サインアウトボタン */}
       <Surface
         elevation={4}
         style={{
           alignSelf: "center",
           width: "90%",
-          marginTop: 24,
-          marginBottom: 60,
-          borderRadius: 14,
+          marginTop: 8,
+          marginBottom: 120,
+          borderRadius: 12,
           overflow: "hidden",
         }}
       >
@@ -281,18 +349,19 @@ export default function ExpenseList({ navigation }: Props) {
             letterSpacing: 0.5,
           }}
           style={{
-            borderRadius: 14,
+            borderRadius: 12,
           }}
         >
           サインアウト
         </Button>
       </Surface>
+
       <FAB
         icon="plus"
         style={{
           position: "absolute",
           right: 20,
-          bottom: 50,
+          bottom: 90,
         }}
         onPress={() => navigation.navigate("ExpenseCreate")}
       />

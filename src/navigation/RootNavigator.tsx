@@ -1,14 +1,14 @@
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { generateClient } from "aws-amplify/data";
-import type { Schema } from "../../amplify/data/resource";
-import ExpenseCreate from "../screens/ExpenseCreate";
-import ExpenseList from "../screens/ExpenseList";
-
 import { getCurrentUser } from "aws-amplify/auth";
+import { generateClient } from "aws-amplify/data";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
+import type { Schema } from "../../amplify/data/resource";
+import ApprovalList from "../screens/ApprovalList";
 import CreateProfileScreen from "../screens/CreateProfileScreen";
+import ExpenseCreate from "../screens/ExpenseCreate";
+import ExpenseList from "../screens/ExpenseList";
 
 const client = generateClient<Schema>();
 
@@ -19,6 +19,7 @@ export type RootStackParamList = {
         expenseId?: string; // ←追加
       }
     | undefined;
+  ApprovalList: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -124,6 +125,13 @@ export default function RootNavigator() {
           component={ExpenseCreate}
           options={{
             title: "経費登録・更新",
+          }}
+        />
+        <Stack.Screen
+          name="ApprovalList"
+          component={ApprovalList}
+          options={{
+            title: "経費承認",
           }}
         />
       </Stack.Navigator>

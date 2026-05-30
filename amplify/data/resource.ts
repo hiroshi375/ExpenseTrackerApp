@@ -32,6 +32,11 @@ const schema = a
       approvalStatus: a.string(),
 
       userId: a.id().required(),
+      approvedBy: a.string(),
+      approvedAt: a.datetime(),
+      rejectedBy: a.string(),
+      rejectedAt: a.datetime(),
+      approvalComment: a.string(),
     }),
   })
   .authorization((allow) => [allow.authenticated()]);
