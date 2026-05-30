@@ -308,7 +308,7 @@ export default function ExpenseList({ navigation }: Props) {
           <Button
             mode="contained"
             onPress={() => navigation.navigate("ApprovalList")}
-            buttonColor="#5f6f7f"
+            buttonColor="#4f5f6f"
             textColor="#ffffff"
             contentStyle={{
               paddingVertical: 8,
