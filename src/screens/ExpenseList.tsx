@@ -330,7 +330,7 @@ export default function ExpenseList({ navigation }: Props) {
           alignSelf: "center",
           width: "90%",
           marginTop: 8,
-          marginBottom: 120,
+          marginBottom: 60,
           borderRadius: 12,
           overflow: "hidden",
         }}
