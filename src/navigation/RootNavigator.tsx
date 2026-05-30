@@ -14,7 +14,11 @@ const client = generateClient<Schema>();
 
 export type RootStackParamList = {
   ExpenseList: undefined;
-  ExpenseCreate: undefined;
+  ExpenseCreate:
+    | {
+        expenseId?: string; // ←追加
+      }
+    | undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();

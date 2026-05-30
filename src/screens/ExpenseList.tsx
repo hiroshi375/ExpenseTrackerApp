@@ -1,5 +1,5 @@
-import { useFocusEffect, useNavigation } from "@react-navigation/native";
-import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useFocusEffect } from "@react-navigation/native";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { signOut } from "aws-amplify/auth";
 import { generateClient } from "aws-amplify/data";
 import { useCallback, useEffect, useState } from "react";
@@ -7,14 +7,12 @@ import { FlatList, RefreshControl, StyleSheet, View } from "react-native";
 import { Button, Card, FAB, Text } from "react-native-paper";
 import type { Schema } from "../../amplify/data/resource";
 import type { RootStackParamList } from "../navigation/RootNavigator";
+
 const client = generateClient<Schema>();
 
-export default function ExpenseList() {
-  const navigation =
-    useNavigation<
-      NativeStackNavigationProp<RootStackParamList, "ExpenseList">
-    >();
+type Props = NativeStackScreenProps<RootStackParamList, "ExpenseList">;
 
+export default function ExpenseList({ navigation }: Props) {
   const [expenses, setExpenses] = useState<any[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -134,21 +132,24 @@ export default function ExpenseList() {
     },
     left: {
       fontSize: 13,
-      flex: 1,
     },
     right: {
       fontSize: 13,
-      flex: 1,
       textAlign: "right",
     },
     center: {
       fontSize: 13,
-      flex: 1,
       textAlign: "center",
     },
     status: {
       fontSize: 12,
       color: "gray",
+    },
+    ocr: {
+      flex: 1,
+      fontSize: 12,
+      textAlign: "center",
+      color: "blue",
     },
   });
 
@@ -162,6 +163,13 @@ export default function ExpenseList() {
         }
         renderItem={({ item }) => (
           <Card
+            mode="elevated"
+            onPress={() => {
+              console.log("CARD PRESS");
+              navigation.navigate("ExpenseCreate", {
+                expenseId: item.id,
+              });
+            }}
             style={{
               margin: 10,
               marginBottom: 2,
@@ -184,23 +192,42 @@ export default function ExpenseList() {
 
               {/* 3行目 */}
               <View style={styles.row}>
-                <Text style={styles.left}>{item.paymentMethod}</Text>
-                <Text style={[styles.center, { textAlign: "center" }]}>
-                  {item.userName}
-                </Text>
-                <Text
-                  style={{
-                    fontSize: 12,
-                    color:
-                      item.approvalStatus === "approved"
-                        ? "green"
-                        : item.approvalStatus === "rejected"
-                          ? "red"
-                          : "gray",
-                  }}
-                >
-                  {item.approvalStatus ?? "未承認"}
-                </Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.left}>{item.paymentMethod}</Text>
+                </View>
+
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.center}>{item.userName}</Text>
+                </View>
+
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      color: "blue",
+                      textAlign: "center",
+                    }}
+                  >
+                    {item.receiptImage ? "OCR" : ""}
+                  </Text>
+                </View>
+
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      textAlign: "right",
+                      color:
+                        item.approvalStatus === "approved"
+                          ? "green"
+                          : item.approvalStatus === "rejected"
+                            ? "red"
+                            : "gray",
+                    }}
+                  >
+                    {item.approvalStatus ?? "未承認"}
+                  </Text>
+                </View>
               </View>
             </Card.Content>
           </Card>

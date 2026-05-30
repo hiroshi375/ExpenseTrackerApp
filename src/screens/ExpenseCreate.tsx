@@ -1,11 +1,14 @@
 import { useNavigation } from "@react-navigation/native";
-import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type {
+  NativeStackNavigationProp,
+  NativeStackScreenProps,
+} from "@react-navigation/native-stack";
 import { getCurrentUser } from "aws-amplify/auth";
 import { generateClient } from "aws-amplify/data";
-import { uploadData } from "aws-amplify/storage";
+import { uploadData, getUrl } from "aws-amplify/storage";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Alert, Image, ScrollView, StyleSheet, View } from "react-native";
 import {
   ActivityIndicator,
@@ -17,13 +20,18 @@ import {
 import { DatePickerModal } from "react-native-paper-dates";
 import type { Schema } from "../../amplify/data/resource";
 import type { RootStackParamList } from "../navigation/RootNavigator";
+
+type Props = NativeStackScreenProps<RootStackParamList, "ExpenseCreate">;
+
 const client = generateClient<Schema>();
 
-export default function ExpenseCreate() {
+export default function ExpenseCreate({ route }: Props) {
   const navigation =
     useNavigation<
       NativeStackNavigationProp<RootStackParamList, "ExpenseCreate">
     >();
+
+  const expenseId = route.params?.expenseId;
 
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
@@ -34,9 +42,49 @@ export default function ExpenseCreate() {
 
   const [loading, setLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("");
-  const [transactionDate, setTransactionDate] = useState<Date | null>(null);
+  const [transactionDate, setTransactionDate] = useState<string>(new Date());
   const [open, setOpen] = useState(false);
+  const [receiptImage, setReceiptImage] = useState("");
 
+  // -----------------------------
+  // 編集モードの場合、既存データをロード
+  // -----------------------------
+  const loadExpense = async () => {
+    try {
+      const result = await client.models.Transaction.get(
+        { id: expenseId! },
+        {
+          authMode: "userPool",
+        },
+      );
+
+      const item = result.data;
+
+      if (!item) return;
+
+      setTitle(item.title ?? "");
+      setAmount(String(item.amount ?? ""));
+      setStoreName(item.storeName ?? "");
+      setPaymentMethod(item.paymentMethod ?? "");
+      if (item.transactionDate) {
+        setTransactionDate(new Date(item.transactionDate));
+      }
+      // receiptImage が存在する場合
+      if (item.receiptImage) {
+        try {
+          const imageResult = await getUrl({
+            path: item.receiptImage,
+          });
+
+          setReceiptImage(imageResult.url.toString());
+        } catch (e) {
+          console.error("getUrl error:", e);
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
   // -----------------------------
   // 画像選択
   // -----------------------------
@@ -245,26 +293,43 @@ export default function ExpenseCreate() {
       }
 
       // -----------------------------
-      // Transaction作成
+      // Transaction作成(編集の場合は更新)
       // -----------------------------
-      await client.models.Transaction.create(
-        {
-          title,
-          amount: Number(amount),
-          type: "expense",
-          categoryId: "default",
-          paymentMethod: "cash",
-          transactionDate: (transactionDate ?? new Date()).toISOString(),
-          storeName,
-          description,
-          receiptImage,
-          userId: currentUser.userId,
-        },
-
-        {
-          authMode: "userPool",
-        },
-      );
+      if (expenseId) {
+        await client.models.Transaction.update(
+          {
+            id: expenseId,
+            title,
+            amount: Number(amount),
+            paymentMethod,
+            transactionDate: transactionDate.toISOString(),
+            storeName,
+            description,
+            receiptImage,
+          },
+          {
+            authMode: "userPool",
+          },
+        );
+      } else {
+        await client.models.Transaction.create(
+          {
+            title,
+            amount: Number(amount),
+            type: "expense",
+            categoryId: "default",
+            paymentMethod,
+            transactionDate: transactionDate.toISOString(),
+            storeName,
+            description,
+            receiptImage,
+            userId: currentUser.userId,
+          },
+          {
+            authMode: "userPool",
+          },
+        );
+      }
 
       Alert.alert("成功", "登録しました");
 
@@ -300,6 +365,13 @@ export default function ExpenseCreate() {
       opacity: 0.6,
     },
   });
+
+  // ←ここに追加
+  useEffect(() => {
+    if (expenseId) {
+      loadExpense();
+    }
+  }, [expenseId]);
 
   return (
     <ScrollView
@@ -382,7 +454,7 @@ export default function ExpenseCreate() {
             }}
           >
             {transactionDate
-              ? transactionDate.toLocaleDateString()
+              ? new Date(transactionDate).toLocaleDateString()
               : "利用日を選択"}
           </Button>
 
@@ -439,6 +511,18 @@ export default function ExpenseCreate() {
               }}
             />
           )}
+          {receiptImage ? (
+            <Image
+              source={{ uri: receiptImage }}
+              style={{
+                width: "100%",
+                height: 240,
+                borderRadius: 8,
+                marginVertical: 12,
+              }}
+              resizeMode="contain"
+            />
+          ) : null}
 
           <Button
             mode="contained"
