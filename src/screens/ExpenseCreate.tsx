@@ -9,11 +9,12 @@ import { getUrl, uploadData } from "aws-amplify/storage";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
 import { useEffect, useState } from "react";
-import { Alert, Image, ScrollView, StyleSheet, View } from "react-native";
+import { Alert, Image, ScrollView, View } from "react-native";
 import {
   ActivityIndicator,
   Button,
   Card,
+  Menu,
   Text,
   TextInput,
 } from "react-native-paper";
@@ -38,16 +39,30 @@ export default function ExpenseCreate({ route }: Props) {
   const [storeName, setStoreName] = useState("");
   const [description, setDescription] = useState("");
 
-  const [imageUri, setImageUri] = useState<string | null>(null);
+  const [imageUri, setImageUri] = useState<string | null>(null); //今回新しく選択・撮影したローカル画像の表示用
 
   const [loading, setLoading] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("現金");
   const [transactionDate, setTransactionDate] = useState<string>(
     new Date().toISOString(),
   );
   const [open, setOpen] = useState(false);
-  const [receiptImage, setReceiptImage] = useState("");
+  const [paymentMenuVisible, setPaymentMenuVisible] = useState(false);
+  const [receiptImagePath, setReceiptImagePath] = useState(""); // S3に保存された画像のパス（編集時に既存データから読み込んだ画像のパスを保持するため）
+  const [receiptImageUrl, setReceiptImageUrl] = useState(""); // 編集時に既存データから読み込んだS3に保存された画像のURL表示用
+  const [newReceiptImagePath, setNewReceiptImagePath] = useState(""); // 今回新しく選択・撮影した画像のS3パスを保持するため
 
+  const paymentMethods = [
+    "現金",
+    "クレジット",
+    "PASMO",
+    "楽天Pay",
+    "PayPay",
+    "J-CoinPay",
+    "Amazon Pay",
+    "Edy",
+    "QR決済",
+  ];
   // -----------------------------
   // 編集モードの場合、既存データをロード
   // -----------------------------
@@ -67,18 +82,19 @@ export default function ExpenseCreate({ route }: Props) {
       setTitle(item.title ?? "");
       setAmount(String(item.amount ?? ""));
       setStoreName(item.storeName ?? "");
-      setPaymentMethod(item.paymentMethod ?? "");
+      setPaymentMethod(item.paymentMethod ?? "現金");
       if (item.transactionDate) {
         setTransactionDate(new Date(item.transactionDate).toISOString());
       }
       // receiptImage が存在する場合
       if (item.receiptImage) {
+        setReceiptImagePath(item.receiptImage);
         try {
           const imageResult = await getUrl({
             path: item.receiptImage,
           });
 
-          setReceiptImage(imageResult.url.toString());
+          setReceiptImageUrl(imageResult.url.toString());
         } catch (e) {
           console.error("getUrl error:", e);
         }
@@ -91,66 +107,90 @@ export default function ExpenseCreate({ route }: Props) {
   // 画像選択
   // -----------------------------
   const pickImage = async () => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    try {
+      setLoading(true);
 
-    if (!permission.granted) {
-      Alert.alert("エラー", "画像権限が必要です");
+      const permission =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
 
-      return;
-    }
+      if (!permission.granted) {
+        Alert.alert("エラー", "画像権限が必要です");
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        return;
+      }
 
-      quality: 1,
-    });
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
 
-    if (!result.canceled) {
-      // -----------------------------
-      // 圧縮
-      // -----------------------------
-      const manipulated = await ImageManipulator.manipulateAsync(
-        result.assets[0].uri,
+        quality: 1,
+      });
 
-        [
-          {
-            rotate: 0,
-          },
-          {
-            resize: {
-              width: 1280,
+      if (!result.canceled) {
+        // -----------------------------
+        // 圧縮
+        // -----------------------------
+        const manipulated = await ImageManipulator.manipulateAsync(
+          result.assets[0].uri,
+
+          [
+            {
+              rotate: 0,
             },
+            {
+              resize: {
+                width: 2000,
+              },
+            },
+          ],
+
+          {
+            compress: 0.8,
+            format: ImageManipulator.SaveFormat.JPEG,
           },
-        ],
+        );
 
-        {
-          compress: 0.2,
-          format: ImageManipulator.SaveFormat.JPEG,
-        },
-      );
+        setImageUri(manipulated.uri);
 
-      setImageUri(manipulated.uri);
-
-      // ② ここでアップロード
-      const imageKey = await uploadReceiptImage(manipulated.uri);
-      console.log("FETCH START");
-      const res = await fetch(
-        "https://1q0jg5lg49.execute-api.ap-northeast-1.amazonaws.com/receiptRecognition",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
+        // ② ここでアップロード
+        const imageKey = await uploadReceiptImage(manipulated.uri);
+        setNewReceiptImagePath(imageKey);
+        console.log("FETCH START");
+        const res = await fetch(
+          "https://1q0jg5lg49.execute-api.ap-northeast-1.amazonaws.com/receiptRecognition",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              imageKey,
+            }),
           },
-          body: JSON.stringify({
-            imageKey,
-          }),
-        },
-      );
-      console.log(res.status);
-      console.log("FETCH OK");
-      const data = await res.json();
+        );
+        console.log(res.status);
+        console.log("FETCH OK");
+        const data = await res.json();
 
-      console.log("OCR結果", data);
+        console.log("OCR結果", data);
+        if (!data.ok) {
+          Alert.alert("OCR失敗", data.error ?? "解析失敗");
+          return;
+        }
+
+        setTitle(data.data.title ?? "");
+        setAmount(String(data.data.amount ?? ""));
+        setStoreName(data.data.storeName ?? "");
+        setDescription(data.data.description ?? "");
+
+        if (data.data.transactionDate) {
+          setTransactionDate(new Date(data.data.transactionDate).toISOString());
+        }
+      }
+    } catch (e) {
+      console.error(e);
+      Alert.alert("OCR失敗", "レシート解析に失敗しました");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -207,12 +247,12 @@ export default function ExpenseCreate({ route }: Props) {
             },
             {
               resize: {
-                width: 1280,
+                width: 2000,
               },
             },
           ],
           {
-            compress: 0.2,
+            compress: 0.8,
             format: ImageManipulator.SaveFormat.JPEG,
           },
         );
@@ -221,6 +261,7 @@ export default function ExpenseCreate({ route }: Props) {
 
         // S3アップロード
         const imageKey = await uploadReceiptImage(manipulated.uri);
+        setNewReceiptImagePath(imageKey);
 
         // OCR API呼び出し
         const res = await fetch(
@@ -277,22 +318,17 @@ export default function ExpenseCreate({ route }: Props) {
         return;
       }
 
-      if (!amount.trim()) {
-        Alert.alert("エラー", "金額を入力してください");
-
+      const amountValue = Number(amount);
+      if (Number.isNaN(amountValue)) {
+        Alert.alert("エラー", "金額は数値で入力してください");
         return;
       }
 
       setLoading(true);
 
-      let receiptImage = "";
-
-      // -----------------------------
-      // S3アップロード
-      // -----------------------------
-      if (imageUri) {
-        receiptImage = await uploadReceiptImage(imageUri);
-      }
+      // 新しく選択・撮影した画像があればそれを使う
+      // なければ既存のレシート画像パスを使う
+      const savedReceiptImagePath = newReceiptImagePath || receiptImagePath;
 
       // -----------------------------
       // Transaction作成(編集の場合は更新)
@@ -302,12 +338,12 @@ export default function ExpenseCreate({ route }: Props) {
           {
             id: expenseId,
             title,
-            amount: Number(amount),
+            amount: amountValue,
             paymentMethod,
             transactionDate: transactionDate,
             storeName,
             description,
-            receiptImage,
+            receiptImage: savedReceiptImagePath, // 既存のreceiptImagePathを使用
           },
           {
             authMode: "userPool",
@@ -317,14 +353,14 @@ export default function ExpenseCreate({ route }: Props) {
         await client.models.Transaction.create(
           {
             title,
-            amount: Number(amount),
+            amount: amountValue,
             type: "expense",
             categoryId: "default",
             paymentMethod,
             transactionDate: transactionDate,
             storeName,
             description,
-            receiptImage,
+            receiptImage: savedReceiptImagePath, // 新しく選択・撮影した画像のパスを使用
             userId: currentUser.userId,
           },
           {
@@ -338,35 +374,12 @@ export default function ExpenseCreate({ route }: Props) {
       navigation.goBack();
     } catch (e) {
       console.error(e);
-      Alert.alert("OCR失敗", "レシート解析に失敗しました");
+      Alert.alert("エラー", "登録に失敗しました");
       //Alert.alert("エラー", "登録に失敗しました");
     } finally {
       setLoading(false);
     }
   };
-
-  // -----------------------------
-  // スタイル
-  // -----------------------------
-  const styles = StyleSheet.create({
-    cameraGuide: {
-      position: "absolute",
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      justifyContent: "center",
-      alignItems: "center",
-    },
-    frame: {
-      width: 280,
-      height: 400,
-      borderWidth: 2,
-      borderColor: "white",
-      borderRadius: 12,
-      opacity: 0.6,
-    },
-  });
 
   // ←ここに追加
   useEffect(() => {
@@ -379,13 +392,9 @@ export default function ExpenseCreate({ route }: Props) {
     <ScrollView
       contentContainerStyle={{
         padding: 16,
+        paddingBottom: 80,
       }}
     >
-      {/* ★ここに追加（カメラガイド） */}
-      <View style={styles.cameraGuide}>
-        <View style={styles.frame} />
-      </View>
-
       <Card>
         <Card.Content>
           {loading && (
@@ -439,15 +448,30 @@ export default function ExpenseCreate({ route }: Props) {
             }}
           />
 
-          <TextInput
-            label="支払い方法"
-            value={paymentMethod}
-            onChangeText={setPaymentMethod}
-            mode="outlined"
-            style={{
-              marginTop: 10,
-            }}
-          />
+          <Menu
+            visible={paymentMenuVisible}
+            onDismiss={() => setPaymentMenuVisible(false)}
+            anchor={
+              <Button
+                mode="outlined"
+                onPress={() => setPaymentMenuVisible(true)}
+                style={{ marginTop: 10, marginBottom: 12 }}
+              >
+                支払方法：{paymentMethod}
+              </Button>
+            }
+          >
+            {paymentMethods.map((method) => (
+              <Menu.Item
+                key={method}
+                onPress={() => {
+                  setPaymentMethod(method);
+                  setPaymentMenuVisible(false);
+                }}
+                title={method}
+              />
+            ))}
+          </Menu>
           <Button
             mode="outlined"
             onPress={() => setOpen(true)}
@@ -501,21 +525,20 @@ export default function ExpenseCreate({ route }: Props) {
           <Button mode="outlined" onPress={takePhoto} style={{ marginTop: 10 }}>
             カメラ撮影
           </Button>
-          {imageUri && (
+          {imageUri ? (
             <Image
-              source={{
-                uri: imageUri,
-              }}
+              source={{ uri: imageUri }}
               style={{
                 width: "100%",
                 height: 300,
                 marginTop: 10,
+                borderRadius: 8,
               }}
+              resizeMode="contain"
             />
-          )}
-          {receiptImage ? (
+          ) : receiptImageUrl ? (
             <Image
-              source={{ uri: receiptImage }}
+              source={{ uri: receiptImageUrl }}
               style={{
                 width: "100%",
                 height: 240,
@@ -532,6 +555,7 @@ export default function ExpenseCreate({ route }: Props) {
             loading={loading}
             style={{
               marginTop: 20,
+              marginBottom: 20,
             }}
           >
             保存

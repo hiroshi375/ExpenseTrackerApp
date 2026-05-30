@@ -3,12 +3,27 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { signOut } from "aws-amplify/auth";
 import { generateClient } from "aws-amplify/data";
 import { useCallback, useEffect, useState } from "react";
-import { FlatList, RefreshControl, StyleSheet, View } from "react-native";
-import { Button, Card, FAB, Text } from "react-native-paper";
+import {
+  Alert,
+  FlatList,
+  RefreshControl,
+  StyleSheet,
+  View,
+} from "react-native";
+import { Button, Card, FAB, Surface, Text } from "react-native-paper";
 import type { Schema } from "../../amplify/data/resource";
 import type { RootStackParamList } from "../navigation/RootNavigator";
 
 const client = generateClient<Schema>();
+
+const handleSignOut = async () => {
+  try {
+    await signOut();
+  } catch (e) {
+    console.error(e);
+    Alert.alert("エラー", "サインアウトに失敗しました");
+  }
+};
 
 type Props = NativeStackScreenProps<RootStackParamList, "ExpenseList">;
 
@@ -234,22 +249,37 @@ export default function ExpenseList({ navigation }: Props) {
         )}
       />
       {/* サインアウトボタン */}
-      <Button
-        mode="outlined"
-        onPress={async () => {
-          try {
-            await signOut();
-          } catch (e) {
-            console.log("sign out error:", e);
-          }
-        }}
+      <Surface
+        elevation={4}
         style={{
-          marginTop: 8,
-          marginBottom: 40,
+          alignSelf: "center",
+          width: "90%",
+          marginTop: 24,
+          marginBottom: 60,
+          borderRadius: 14,
+          overflow: "hidden",
         }}
       >
-        サインアウト
-      </Button>
+        <Button
+          mode="contained"
+          onPress={handleSignOut}
+          buttonColor="#4f5f6f"
+          textColor="#ffffff"
+          contentStyle={{
+            paddingVertical: 8,
+          }}
+          labelStyle={{
+            fontSize: 16,
+            fontWeight: "bold",
+            letterSpacing: 0.5,
+          }}
+          style={{
+            borderRadius: 14,
+          }}
+        >
+          サインアウト
+        </Button>
+      </Surface>
       <FAB
         icon="plus"
         style={{
