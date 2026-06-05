@@ -52,7 +52,10 @@ export default function ExpenseCreate({ route }: Props) {
   const [receiptImagePath, setReceiptImagePath] = useState(""); // S3に保存された画像のパス（編集時に既存データから読み込んだ画像のパスを保持するため）
   const [receiptImageUrl, setReceiptImageUrl] = useState(""); // 編集時に既存データから読み込んだS3に保存された画像のURL表示用
   const [newReceiptImagePath, setNewReceiptImagePath] = useState(""); // 今回新しく選択・撮影した画像のS3パスを保持するため
-
+  const [titleError, setTitleError] = useState("");
+  const [amountError, setAmountError] = useState("");
+  const [storeNameError, setStoreNameError] = useState("");
+  const [paymentMethodError, setPaymentMethodError] = useState("");
   const paymentMethods = [
     "現金",
     "クレジット",
@@ -64,6 +67,15 @@ export default function ExpenseCreate({ route }: Props) {
     "Edy",
     "QR決済",
   ];
+  const canSave =
+    title.trim() !== "" &&
+    amount.trim() !== "" &&
+    storeName.trim() !== "" &&
+    paymentMethod.trim() !== "";
+  const [receiptReadMode, setReceiptReadMode] = useState<"single" | "split">(
+    "single",
+  );
+  const [readModeMenuVisible, setReadModeMenuVisible] = useState(false);
   // ここで日付と時刻を結合してISO 8601形式に変換している
   const formatDateTime = (value: string) => {
     const d = new Date(value);
@@ -180,6 +192,32 @@ export default function ExpenseCreate({ route }: Props) {
           return;
         }
 
+        if (receiptReadMode === "split") {
+          const items = data.data.items ?? [];
+
+          if (!items.length) {
+            Alert.alert(
+              "明細なし",
+              "複数トランザクションに分割できる明細が見つかりませんでした。",
+            );
+            return;
+          }
+
+          navigation.navigate("ExpenseSplitCreate", {
+            receiptImagePath: imageKey,
+            storeName: data.data.storeName ?? "",
+            paymentMethod: paymentMethod || data.data.paymentMethod || "現金",
+            transactionDate: data.data.transactionDate ?? transactionDate,
+            items: items.map((item: any) => ({
+              title: item.title ?? "",
+              amount: Number(item.amount ?? 0),
+              categoryId: item.categoryId ?? "default",
+              description: item.description ?? "",
+            })),
+          });
+
+          return;
+        }
         setTitle(data.data.title ?? "");
         setAmount(String(data.data.amount ?? ""));
         setStoreName(data.data.storeName ?? "");
@@ -289,13 +327,36 @@ export default function ExpenseCreate({ route }: Props) {
 
           return;
         }
+        if (receiptReadMode === "split") {
+          const items = json.data.items ?? [];
+
+          if (!items.length) {
+            Alert.alert(
+              "明細なし",
+              "複数トランザクションに分割できる明細が見つかりませんでした。",
+            );
+            return;
+          }
+
+          navigation.navigate("ExpenseSplitCreate", {
+            receiptImagePath: imageKey,
+            storeName: json.data.storeName ?? "",
+            paymentMethod: json.data.paymentMethod ?? paymentMethod,
+            transactionDate: json.data.transactionDate ?? transactionDate,
+            items: items.map((item: any) => ({
+              title: item.title ?? "",
+              amount: Number(item.amount ?? 0),
+              categoryId: item.categoryId ?? "default",
+              description: item.description ?? "",
+            })),
+          });
+
+          return;
+        }
         // ★ OCR結果反映（OCR成功時のみ）
         setTitle(json.data.title ?? "");
-
         setAmount(String(json.data.amount ?? ""));
-
         setStoreName(json.data.storeName ?? "");
-
         setDescription(json.data.description ?? "");
 
         if (json.data.transactionDate) {
@@ -309,21 +370,53 @@ export default function ExpenseCreate({ route }: Props) {
       setLoading(false);
     }
   };
+
+  // -----------------------------
+  // OCR結果を複数明細モードでExpenseSplitCreateに渡す
+  // -----------------------------
+  const validateForm = () => {
+    let valid = true;
+
+    setTitleError("");
+    setAmountError("");
+    setStoreNameError("");
+    setPaymentMethodError("");
+
+    if (!title.trim()) {
+      setTitleError("件名を入力してください");
+      valid = false;
+    }
+
+    if (!amount.trim()) {
+      setAmountError("金額を入力してください");
+      valid = false;
+    }
+
+    if (!storeName.trim()) {
+      setStoreNameError("店舗名を入力してください");
+      valid = false;
+    }
+
+    if (!paymentMethod.trim()) {
+      setPaymentMethodError("支払方法を選択してください");
+      valid = false;
+    }
+
+    return valid;
+  };
   // -----------------------------
   // 登録
   // -----------------------------
   const onCreate = async () => {
     try {
-      const currentUser = await getCurrentUser();
-      if (!title.trim()) {
-        Alert.alert("エラー", "タイトルを入力してください");
-
+      if (!validateForm()) {
         return;
       }
+      const currentUser = await getCurrentUser();
 
-      const amountValue = Number(amount);
+      const amountValue = Number(amount.replace(/,/g, ""));
       if (Number.isNaN(amountValue)) {
-        Alert.alert("エラー", "金額は数値で入力してください");
+        setAmountError("金額は数値で入力してください");
         return;
       }
 
@@ -465,33 +558,54 @@ export default function ExpenseCreate({ route }: Props) {
           <TextInput
             label="件名"
             value={title}
-            onChangeText={setTitle}
+            onChangeText={(text) => {
+              setTitle(text);
+              if (text.trim()) setTitleError("");
+            }}
             mode="outlined"
+            error={!!titleError}
             style={{
               marginTop: 10,
             }}
           />
+          {titleError ? (
+            <Text style={{ color: "red", marginTop: 4 }}>{titleError}</Text>
+          ) : null}
 
           <TextInput
             label="金額"
             value={amount}
-            onChangeText={setAmount}
+            onChangeText={(text) => {
+              setAmount(text);
+              if (text.trim()) setAmountError("");
+            }}
             keyboardType="numeric"
             mode="outlined"
+            error={!!amountError}
             style={{
               marginTop: 10,
             }}
           />
+          {amountError ? (
+            <Text style={{ color: "red", marginTop: 4 }}>{amountError}</Text>
+          ) : null}
 
           <TextInput
             label="店舗名"
             value={storeName}
-            onChangeText={setStoreName}
+            onChangeText={(text) => {
+              setStoreName(text);
+              if (text.trim()) setStoreNameError("");
+            }}
             mode="outlined"
+            error={!!storeNameError}
             style={{
               marginTop: 10,
             }}
           />
+          {storeNameError ? (
+            <Text style={{ color: "red", marginTop: 4 }}>{storeNameError}</Text>
+          ) : null}
 
           <Menu
             visible={paymentMenuVisible}
@@ -502,7 +616,7 @@ export default function ExpenseCreate({ route }: Props) {
                 onPress={() => setPaymentMenuVisible(true)}
                 style={{ marginTop: 10, marginBottom: 12 }}
               >
-                支払方法：{paymentMethod}
+                支払方法：{paymentMethod || "未選択"}
               </Button>
             }
           >
@@ -516,6 +630,43 @@ export default function ExpenseCreate({ route }: Props) {
                 title={method}
               />
             ))}
+          </Menu>
+          {!paymentMethod.trim() ? (
+            <Text style={{ color: "red", marginTop: 4 }}>
+              支払方法を選択してください
+            </Text>
+          ) : null}
+
+          <Menu
+            visible={readModeMenuVisible}
+            onDismiss={() => setReadModeMenuVisible(false)}
+            anchor={
+              <Button
+                mode="outlined"
+                onPress={() => setReadModeMenuVisible(true)}
+                style={{ marginTop: 10 }}
+              >
+                読み込み方法：
+                {receiptReadMode === "single"
+                  ? "1レシート1明細"
+                  : "1レシート複数明細"}
+              </Button>
+            }
+          >
+            <Menu.Item
+              title="1レシート1明細"
+              onPress={() => {
+                setReceiptReadMode("single");
+                setReadModeMenuVisible(false);
+              }}
+            />
+            <Menu.Item
+              title="1レシート複数明細"
+              onPress={() => {
+                setReceiptReadMode("split");
+                setReadModeMenuVisible(false);
+              }}
+            />
           </Menu>
           <Button
             mode="outlined"
@@ -634,6 +785,7 @@ export default function ExpenseCreate({ route }: Props) {
             <Button
               mode="contained"
               onPress={onCreate}
+              disabled={!canSave || loading}
               buttonColor="#4f5f6f"
               textColor="#ffffff"
               contentStyle={{

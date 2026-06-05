@@ -115,10 +115,19 @@ Markdownは禁止です。
 {
   "storeName": "",
   "amount": 0,
+  "totalAmount": 0,
   "transactionDate": "",
   "category": "",
   "title": "",
-  "description": ""
+  "description": "",
+  "items": [
+    {
+      "title": "",
+      "amount": 0,
+      "category": "",
+      "description": ""
+    }
+  ]
 }
 `,
 
@@ -160,6 +169,12 @@ Markdownは禁止です。
 - 日付のみ読み取れる場合: "2026-06-05"
 - 日付と時刻が読み取れる場合: "2026-06-05T14:32:00+09:00"
 時刻が読み取れない場合は、時刻を推測しないでください。
+
+レシートの明細行を可能な限り分解してください。
+1つの明細を1トランザクション候補として items に入れてください。
+合計金額は totalAmount に入れてください。
+明細が読み取れない場合は items を空配列にしてください。
+
 カテゴリは以下から選択：
 
 医療費
@@ -230,16 +245,21 @@ Markdownは禁止です。
 
         data: {
           storeName: parsed.storeName ?? "",
-
-          amount: parsed.amount ?? 0,
-
+          paymentMethod: parsed.paymentMethod ?? "",
+          amount: parsed.amount ?? parsed.totalAmount ?? 0,
+          totalAmount: parsed.totalAmount ?? parsed.amount ?? 0,
           transactionDate: parsed.transactionDate ?? "",
-
           category: parsed.category ?? "other",
-
           title: parsed.title ?? "",
-
           description: parsed.description ?? "",
+          items: Array.isArray(parsed.items)
+            ? parsed.items.map((item: any) => ({
+                title: item.title ?? "",
+                amount: Number(item.amount ?? 0),
+                category: item.category ?? "other",
+                description: item.description ?? "",
+              }))
+            : [],
         },
       }),
     };

@@ -9,6 +9,7 @@ import ApprovalList from "../screens/ApprovalList";
 import CreateProfileScreen from "../screens/CreateProfileScreen";
 import ExpenseCreate from "../screens/ExpenseCreate";
 import ExpenseList from "../screens/ExpenseList";
+import ExpenseSplitCreate from "../screens/ExpenseSplitCreate";
 
 const client = generateClient<Schema>();
 
@@ -20,6 +21,20 @@ export type RootStackParamList = {
       }
     | undefined;
   ApprovalList: undefined;
+  ExpenseSplitCreate: {
+    receiptImagePath: string;
+    receiptImageUrl?: string;
+    storeName?: string;
+    paymentMethod?: string;
+    transactionDate?: string;
+    items: SplitExpenseItem[];
+  };
+};
+export type SplitExpenseItem = {
+  title: string;
+  amount: number;
+  categoryId?: string;
+  description?: string;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -133,6 +148,11 @@ export default function RootNavigator() {
           options={{
             title: "経費承認",
           }}
+        />
+        <Stack.Screen
+          name="ExpenseSplitCreate"
+          component={ExpenseSplitCreate}
+          options={{ title: "経費分割登録" }}
         />
       </Stack.Navigator>
     </NavigationContainer>
