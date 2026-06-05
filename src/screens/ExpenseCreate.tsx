@@ -107,47 +107,6 @@ export default function ExpenseCreate({ route }: Props) {
   };
 
   // -----------------------------
-  // 編集モードの場合、既存データをロード
-  // -----------------------------
-  const loadExpense = async () => {
-    try {
-      const result = await client.models.Transaction.get(
-        { id: expenseId! },
-        {
-          authMode: "userPool",
-        },
-      );
-
-      const item = result.data;
-
-      if (!item) return;
-
-      setTitle(item.title ?? "");
-      setAmount(String(item.amount ?? ""));
-      setStoreName(item.storeName ?? "");
-      setPaymentMethod(item.paymentMethod ?? "現金");
-      setDescription(item.description ?? "");
-      if (item.transactionDate) {
-        setTransactionDate(new Date(item.transactionDate).toISOString());
-      }
-      // receiptImage が存在する場合
-      if (item.receiptImage) {
-        setReceiptImagePath(item.receiptImage);
-        try {
-          const imageResult = await getUrl({
-            path: item.receiptImage,
-          });
-
-          setReceiptImageUrl(imageResult.url.toString());
-        } catch (e) {
-          console.error("getUrl error:", e);
-        }
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-  // -----------------------------
   // 画像選択
   // -----------------------------
   const pickImage = async () => {
@@ -427,9 +386,52 @@ export default function ExpenseCreate({ route }: Props) {
 
   // ←ここに追加
   useEffect(() => {
-    if (expenseId) {
-      loadExpense();
-    }
+    // -----------------------------
+    // 編集モードの場合、既存データをロード
+    // -----------------------------
+    const loadExpense = async () => {
+      if (!expenseId) return;
+      try {
+        const result = await client.models.Transaction.get(
+          { id: expenseId },
+          {
+            authMode: "userPool",
+          },
+        );
+
+        const item = result.data;
+
+        if (!item) return;
+
+        setTitle(item.title ?? "");
+        setAmount(String(item.amount ?? ""));
+        setStoreName(item.storeName ?? "");
+        setPaymentMethod(item.paymentMethod ?? "現金");
+        setDescription(item.description ?? "");
+
+        if (item.transactionDate) {
+          setTransactionDate(new Date(item.transactionDate).toISOString());
+        }
+
+        if (item.receiptImage) {
+          setReceiptImagePath(item.receiptImage);
+
+          try {
+            const imageResult = await getUrl({
+              path: item.receiptImage,
+            });
+
+            setReceiptImageUrl(imageResult.url.toString());
+          } catch (e) {
+            console.error("getUrl error:", e);
+          }
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+
+    loadExpense();
   }, [expenseId]);
 
   return (
