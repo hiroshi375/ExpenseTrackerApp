@@ -64,6 +64,48 @@ export default function ExpenseCreate({ route }: Props) {
     "Edy",
     "QR決済",
   ];
+  // ここで日付と時刻を結合してISO 8601形式に変換している
+  const formatDateTime = (value: string) => {
+    const d = new Date(value);
+
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    const hh = String(d.getHours()).padStart(2, "0");
+    const mi = String(d.getMinutes()).padStart(2, "0");
+
+    return `${yyyy}-${mm}-${dd} ${hh}:${mi}`;
+  };
+
+  // ここでは時刻のみを抽出している
+  const formatTime = (value: string) => {
+    const d = new Date(value);
+    const hh = String(d.getHours()).padStart(2, "0");
+    const mi = String(d.getMinutes()).padStart(2, "0");
+    return `${hh}:${mi}`;
+  };
+
+  // OCRから利用日が返ってきたときに、既存のtransactionDateの時刻と結合してISO 8601形式に変換している
+  const applyOcrTransactionDate = (value?: string | null) => {
+    if (!value) return;
+
+    let d: Date;
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      const [yyyy, mm, dd] = value.split("-").map(Number);
+      d = new Date(yyyy, mm - 1, dd, 0, 0, 0);
+    } else {
+      d = new Date(value);
+    }
+
+    if (Number.isNaN(d.getTime())) {
+      console.warn("Invalid OCR transactionDate:", value);
+      return;
+    }
+
+    setTransactionDate(d.toISOString());
+  };
+
   // -----------------------------
   // 編集モードの場合、既存データをロード
   // -----------------------------
@@ -185,7 +227,7 @@ export default function ExpenseCreate({ route }: Props) {
         setDescription(data.data.description ?? "");
 
         if (data.data.transactionDate) {
-          setTransactionDate(new Date(data.data.transactionDate).toISOString());
+          applyOcrTransactionDate(data.data.transactionDate);
         }
       }
     } catch (e) {
@@ -298,7 +340,7 @@ export default function ExpenseCreate({ route }: Props) {
         setDescription(json.data.description ?? "");
 
         if (json.data.transactionDate) {
-          setTransactionDate(new Date(json.data.transactionDate).toISOString());
+          applyOcrTransactionDate(json.data.transactionDate);
         }
       }
     } catch (e) {
@@ -480,10 +522,26 @@ export default function ExpenseCreate({ route }: Props) {
               marginTop: 10,
             }}
           >
-            {transactionDate
-              ? new Date(transactionDate).toLocaleDateString()
-              : "利用日を選択"}
+            {transactionDate ? formatDateTime(transactionDate) : "利用日を選択"}
           </Button>
+          <TextInput
+            label="利用時刻 HH:mm"
+            value={formatTime(transactionDate)}
+            onChangeText={(text) => {
+              const m = text.match(/^(\d{1,2}):(\d{2})$/);
+              if (!m) return;
+
+              const hour = Number(m[1]);
+              const minute = Number(m[2]);
+
+              if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return;
+              const d = new Date(transactionDate);
+              d.setHours(Number(m[1]), Number(m[2]), 0, 0);
+              setTransactionDate(d.toISOString());
+            }}
+            mode="outlined"
+            style={{ marginTop: 10 }}
+          />
 
           <DatePickerModal
             locale="ja"
@@ -497,7 +555,17 @@ export default function ExpenseCreate({ route }: Props) {
               const d = params.date;
               if (!d) return;
 
-              setTransactionDate(new Date(d).toISOString());
+              const current = new Date(transactionDate);
+              const selected = new Date(d);
+
+              selected.setHours(
+                current.getHours(),
+                current.getMinutes(),
+                current.getSeconds(),
+                0,
+              );
+
+              setTransactionDate(selected.toISOString());
             }}
           />
 
