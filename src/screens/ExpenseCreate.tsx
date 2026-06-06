@@ -55,7 +55,6 @@ export default function ExpenseCreate({ route }: Props) {
   const [titleError, setTitleError] = useState("");
   const [amountError, setAmountError] = useState("");
   const [storeNameError, setStoreNameError] = useState("");
-  const [paymentMethodError, setPaymentMethodError] = useState("");
   const paymentMethods = [
     "現金",
     "クレジット",
@@ -380,7 +379,6 @@ export default function ExpenseCreate({ route }: Props) {
     setTitleError("");
     setAmountError("");
     setStoreNameError("");
-    setPaymentMethodError("");
 
     if (!title.trim()) {
       setTitleError("件名を入力してください");
@@ -398,7 +396,6 @@ export default function ExpenseCreate({ route }: Props) {
     }
 
     if (!paymentMethod.trim()) {
-      setPaymentMethodError("支払方法を選択してください");
       valid = false;
     }
 
@@ -668,34 +665,48 @@ export default function ExpenseCreate({ route }: Props) {
               }}
             />
           </Menu>
-          <Button
-            mode="outlined"
-            onPress={() => setOpen(true)}
+          <View
             style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 10,
               marginTop: 10,
             }}
           >
-            {transactionDate ? formatDateTime(transactionDate) : "利用日を選択"}
-          </Button>
-          <TextInput
-            label="利用時刻 HH:mm"
-            value={formatTime(transactionDate)}
-            onChangeText={(text) => {
-              const m = text.match(/^(\d{1,2}):(\d{2})$/);
-              if (!m) return;
+            <Button
+              mode="outlined"
+              onPress={() => setOpen(true)}
+              style={{
+                marginTop: 10,
+                flex: 1.4,
+              }}
+            >
+              {transactionDate
+                ? formatDateTime(transactionDate)
+                : "利用日を選択"}
+            </Button>
+            <TextInput
+              label="利用時刻 HH:mm"
+              value={formatTime(transactionDate)}
+              onChangeText={(text) => {
+                const m = text.match(/^(\d{1,2}):(\d{2})$/);
+                if (!m) return;
 
-              const hour = Number(m[1]);
-              const minute = Number(m[2]);
+                const hour = Number(m[1]);
+                const minute = Number(m[2]);
 
-              if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return;
-              const d = new Date(transactionDate);
-              d.setHours(Number(m[1]), Number(m[2]), 0, 0);
-              setTransactionDate(d.toISOString());
-            }}
-            mode="outlined"
-            style={{ marginTop: 10 }}
-          />
-
+                if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return;
+                const d = new Date(transactionDate);
+                d.setHours(Number(m[1]), Number(m[2]), 0, 0);
+                setTransactionDate(d.toISOString());
+              }}
+              mode="outlined"
+              style={{ marginTop: 10, flex: 1 }}
+              contentStyle={{
+                height: 30,
+              }}
+            />
+          </View>
           <DatePickerModal
             locale="ja"
             mode="single"

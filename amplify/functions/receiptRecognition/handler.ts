@@ -98,7 +98,7 @@ export const handler = async (event: any) => {
     const prompt = {
       anthropic_version: "bedrock-2023-05-31",
 
-      max_tokens: 1000,
+      max_tokens: 3000,
 
       system: `
 あなたはレシート解析AIです。
