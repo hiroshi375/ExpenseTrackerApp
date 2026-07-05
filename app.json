@@ -39,6 +39,12 @@
                         "backgroundColor": "#004b4b"
                     }
                 }
+            ],
+            [
+                "expo-camera",
+                {
+                    "cameraPermission": "レシート撮影のためにカメラを使用します。"
+                }
             ]
         ],
         "experiments": {},

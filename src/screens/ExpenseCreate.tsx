@@ -8,7 +8,7 @@ import { generateClient } from "aws-amplify/data";
 import { getUrl, uploadData } from "aws-amplify/storage";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Alert, Image, ScrollView, View } from "react-native";
 import {
     ActivityIndicator,
@@ -37,6 +37,9 @@ export default function ExpenseCreate({ route }: Props) {
         >();
 
     const expenseId = route.params?.expenseId;
+    const capturedImageUri = route.params?.capturedImageUri;
+    const capturedImageWidth = route.params?.capturedImageWidth ?? 0;
+    const capturedImageHeight = route.params?.capturedImageHeight ?? 0;
 
     const [title, setTitle] = useState("");
     const [amount, setAmount] = useState("");
@@ -78,6 +81,7 @@ export default function ExpenseCreate({ route }: Props) {
         "single",
     );
     const [readModeMenuVisible, setReadModeMenuVisible] = useState(false);
+    const processingImageRef = useRef(false);
     // ここで日付と時刻を結合してISO 8601形式に変換している
     const formatDateTime = (value: string) => {
         const d = new Date(value);
@@ -133,14 +137,14 @@ export default function ExpenseCreate({ route }: Props) {
 
         // レシートは縦向きで読み取る前提。
         // 横長画像なら縦向きになるように回転する。
-        if (asset.width > asset.height) {
+        if (asset.width && asset.height && asset.width > asset.height) {
             console.log("横長画像と判断したため90度回転します");
 
             actions.push({
                 rotate: 90,
             });
         } else {
-            console.log("縦画像と判断したため回転しません");
+            console.log("縦画像、またはサイズ不明のため回転しません");
         }
 
         actions.push({
@@ -275,12 +279,48 @@ export default function ExpenseCreate({ route }: Props) {
     };
 
     // -----------------------------
+    // ImagePicker結果を安全に処理する共通関数
+    // launchCameraAsync / launchImageLibraryAsync / getPendingResultAsync 共通
+    // -----------------------------
+    const handleImagePickerResult = async (
+        result: ImagePicker.ImagePickerResult | null,
+    ) => {
+        if (!result) {
+            return;
+        }
+
+        if (result.canceled) {
+            return;
+        }
+
+        const asset = result.assets?.[0];
+
+        if (!asset) {
+            Alert.alert("エラー", "画像を取得できませんでした");
+            return;
+        }
+
+        // Androidで復元処理と通常処理が二重に走ることを防ぐ
+        if (processingImageRef.current) {
+            return;
+        }
+
+        processingImageRef.current = true;
+
+        try {
+            setLoading(true);
+            await processReceiptAsset(asset);
+        } finally {
+            processingImageRef.current = false;
+            setLoading(false);
+        }
+    };
+
+    // -----------------------------
     // 画像選択
     // -----------------------------
     const pickImage = async () => {
         try {
-            setLoading(true);
-
             const permission =
                 await ImagePicker.requestMediaLibraryPermissionsAsync();
 
@@ -295,55 +335,20 @@ export default function ExpenseCreate({ route }: Props) {
                 exif: true,
             });
 
-            if (result.canceled) {
-                return;
-            }
-
-            const asset = result.assets[0];
-
-            await processReceiptAsset(asset);
+            await handleImagePickerResult(result);
         } catch (e: any) {
             console.error(e);
             Alert.alert("OCR失敗", e.message ?? "レシート解析に失敗しました");
-        } finally {
             setLoading(false);
+            processingImageRef.current = false;
         }
     };
 
     // -----------------------------
     // カメラ撮影
     // -----------------------------
-    const takePhoto = async () => {
-        try {
-            setLoading(true);
-
-            const permission =
-                await ImagePicker.requestCameraPermissionsAsync();
-
-            if (!permission.granted) {
-                Alert.alert("エラー", "カメラ権限が必要です");
-                return;
-            }
-
-            const result = await ImagePicker.launchCameraAsync({
-                quality: 1,
-                exif: true,
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            });
-
-            if (result.canceled) {
-                return;
-            }
-
-            const asset = result.assets[0];
-
-            await processReceiptAsset(asset);
-        } catch (e: any) {
-            console.error(e);
-            Alert.alert("OCR失敗", e.message ?? "レシート解析に失敗しました");
-        } finally {
-            setLoading(false);
-        }
+    const takePhoto = () => {
+        navigation.navigate("ReceiptCamera");
     };
 
     // -----------------------------
@@ -441,7 +446,10 @@ export default function ExpenseCreate({ route }: Props) {
 
             Alert.alert("成功", "登録しました");
 
-            navigation.goBack();
+            navigation.reset({
+                index: 0,
+                routes: [{ name: "ExpenseList" }],
+            });
         } catch (e) {
             console.error(e);
             Alert.alert("エラー", "登録に失敗しました");
@@ -502,6 +510,94 @@ export default function ExpenseCreate({ route }: Props) {
 
         loadExpense();
     }, [expenseId]);
+
+    // -----------------------------
+    // expo-camera で撮影した画像を受け取り、OCR処理へ流す
+    // -----------------------------
+    useEffect(() => {
+        if (!capturedImageUri) {
+            return;
+        }
+
+        const processCapturedImage = async () => {
+            if (processingImageRef.current) {
+                return;
+            }
+
+            processingImageRef.current = true;
+
+            try {
+                setLoading(true);
+
+                await processReceiptAsset({
+                    uri: capturedImageUri,
+                    width: capturedImageWidth,
+                    height: capturedImageHeight,
+                } as ImagePicker.ImagePickerAsset);
+
+                // 同じ画像を再処理しないようにparamsをクリア
+                navigation.setParams({
+                    capturedImageUri: undefined,
+                    capturedImageWidth: undefined,
+                    capturedImageHeight: undefined,
+                });
+            } catch (e: any) {
+                console.error(e);
+                Alert.alert(
+                    "OCR失敗",
+                    e.message ?? "レシート解析に失敗しました",
+                );
+            } finally {
+                processingImageRef.current = false;
+                setLoading(false);
+            }
+        };
+
+        processCapturedImage();
+
+        // capturedImageUri が変わった時だけ処理する
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [capturedImageUri]);
+
+    // -----------------------------
+    // Androidでカメラ撮影中にActivityが破棄された場合の復元処理
+    // -----------------------------
+    useEffect(() => {
+        let active = true;
+
+        const restorePendingImagePickerResult = async () => {
+            try {
+                const pendingResult = await ImagePicker.getPendingResultAsync();
+
+                if (!active || !pendingResult) {
+                    return;
+                }
+
+                if ("canceled" in pendingResult) {
+                    await handleImagePickerResult(pendingResult);
+                    return;
+                }
+
+                if ("code" in pendingResult) {
+                    console.warn(
+                        "ImagePicker pending result error:",
+                        pendingResult,
+                    );
+                }
+            } catch (e) {
+                console.error("getPendingResultAsync error:", e);
+            }
+        };
+
+        restorePendingImagePickerResult();
+
+        return () => {
+            active = false;
+        };
+
+        // 初回マウント時だけ実行したいため依存配列は空
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     return (
         <ScrollView

@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { getCurrentUser, signOut } from "aws-amplify/auth";
@@ -16,8 +17,14 @@ import type { RootStackParamList } from "../navigation/RootNavigator";
 
 const client = generateClient<Schema>();
 
+const NAVIGATION_STATE_KEY = "expense-tracker-navigation-state-v1";
+
 const handleSignOut = async () => {
     try {
+        // 保存済みのNavigation状態を削除
+        // これをしないと、次回ログイン時に前回のExpenseCreateなどへ復元される可能性がある
+        await AsyncStorage.removeItem(NAVIGATION_STATE_KEY);
+
         await signOut();
     } catch (e) {
         console.error(e);
