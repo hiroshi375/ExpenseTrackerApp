@@ -1,24 +1,33 @@
 {
-  "cli": {
-    "version": ">= 18.4.0",
-    "appVersionSource": "remote"
-  },
-  "build": {
-    "development": {
-      "developmentClient": true,
-      "distribution": "internal"
+    "cli": {
+        "version": ">= 18.4.0",
+        "appVersionSource": "remote"
     },
-    "preview": {
-      "distribution": "internal",
-      "android": {
-        "buildType": "apk"
-      }
+    "build": {
+        "development": {
+            "developmentClient": true,
+            "distribution": "internal",
+            "env": {
+                "EAS_NO_FROZEN_LOCKFILE": "1"
+            }
+        },
+        "preview": {
+            "distribution": "internal",
+            "android": {
+                "buildType": "apk"
+            },
+            "env": {
+                "EAS_NO_FROZEN_LOCKFILE": "1"
+            }
+        },
+        "production": {
+            "autoIncrement": true,
+            "env": {
+                "EAS_NO_FROZEN_LOCKFILE": "1"
+            }
+        }
     },
-    "production": {
-      "autoIncrement": true
+    "submit": {
+        "production": {}
     }
-  },
-  "submit": {
-    "production": {}
-  }
 }
