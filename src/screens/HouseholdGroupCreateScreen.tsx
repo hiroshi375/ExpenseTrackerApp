@@ -17,6 +17,7 @@ import {
 } from "react-native-paper";
 
 import type { RootStackParamList } from "../navigation/RootNavigator";
+import { setCurrentHouseholdGroupId } from "../services/currentHouseholdGroupService";
 import { createHouseholdGroup } from "../services/householdGroupService";
 
 type Props = NativeStackScreenProps<RootStackParamList, "HouseholdGroupCreate">;
@@ -43,6 +44,8 @@ export default function HouseholdGroupCreateScreen({ navigation }: Props) {
             const result = await createHouseholdGroup({
                 name: trimmedName,
             });
+
+            await setCurrentHouseholdGroupId(result.group.groupId);
 
             console.log("[HouseholdGroupCreate] group:", result.group);
 

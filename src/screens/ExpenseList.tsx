@@ -14,6 +14,7 @@ import {
 import { Button, Card, FAB, Surface, Text } from "react-native-paper";
 import type { Schema } from "../../amplify/data/resource";
 import type { RootStackParamList } from "../navigation/RootNavigator";
+import { clearCurrentHouseholdGroupId } from "../services/currentHouseholdGroupService";
 
 const client = generateClient<Schema>();
 
@@ -24,7 +25,7 @@ const handleSignOut = async () => {
         // 保存済みのNavigation状態を削除
         // これをしないと、次回ログイン時に前回のExpenseCreateなどへ復元される可能性がある
         await AsyncStorage.removeItem(NAVIGATION_STATE_KEY);
-
+        await clearCurrentHouseholdGroupId();
         await signOut();
     } catch (e) {
         console.error(e);
@@ -333,7 +334,9 @@ export default function ExpenseList({ navigation }: Props) {
             >
                 <Button
                     mode="outlined"
-                    onPress={() => navigation.navigate("HouseholdGroupCreate")}
+                    onPress={() =>
+                        navigation.navigate("HouseholdGroupManagement")
+                    }
                     textColor="#4f5f6f"
                     contentStyle={{
                         paddingVertical: 8,
@@ -346,7 +349,7 @@ export default function ExpenseList({ navigation }: Props) {
                         borderRadius: 12,
                     }}
                 >
-                    家計簿グループを作成
+                    家計簿グループ管理
                 </Button>
             </Surface>
 
