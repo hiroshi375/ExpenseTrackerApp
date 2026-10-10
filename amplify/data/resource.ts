@@ -80,7 +80,10 @@ const schema = a
                 // 参加日時
                 joinedAt: a.datetime(),
                 // このメンバーを追加したユーザー
+                // 業務上「誰がこのメンバーを追加したか」
                 createdByUserId: a.string().required(),
+                // Amplify owner認可専用
+                createdByOwner: a.string().required(),
                 // 同じグループに属するユーザーのowner情報
                 groupOwners: a.string().array(),
             })

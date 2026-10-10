@@ -14,6 +14,7 @@ import CreateProfileScreen from "../screens/CreateProfileScreen";
 import ExpenseCreate from "../screens/ExpenseCreate";
 import ExpenseList from "../screens/ExpenseList";
 import ExpenseSplitCreate from "../screens/ExpenseSplitCreate";
+import HouseholdGroupCreateScreen from "../screens/HouseholdGroupCreateScreen";
 import ReceiptCameraScreen from "../screens/ReceiptCameraScreen";
 
 const client = generateClient<Schema>();
@@ -37,6 +38,7 @@ export type RootStackParamList = {
               capturedImageHeight?: number;
           }
         | undefined;
+    HouseholdGroupCreate: undefined;
     ApprovalList: undefined;
     ExpenseSplitCreate: {
         receiptImagePath: string;
@@ -212,6 +214,13 @@ export default function RootNavigator() {
                     name="ExpenseSplitCreate"
                     component={ExpenseSplitCreate}
                     options={{ title: "経費分割登録" }}
+                />
+                <Stack.Screen
+                    name="HouseholdGroupCreate"
+                    component={HouseholdGroupCreateScreen}
+                    options={{
+                        title: "家計簿グループを作成",
+                    }}
                 />
             </Stack.Navigator>
         </NavigationContainer>

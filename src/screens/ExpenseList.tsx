@@ -319,6 +319,37 @@ export default function ExpenseList({ navigation }: Props) {
                 )}
             />
 
+            {/* 家計簿グループ作成ボタン */}
+            <Surface
+                elevation={4}
+                style={{
+                    alignSelf: "center",
+                    width: "90%",
+                    marginTop: 6,
+                    marginBottom: 6,
+                    borderRadius: 12,
+                    overflow: "hidden",
+                }}
+            >
+                <Button
+                    mode="outlined"
+                    onPress={() => navigation.navigate("HouseholdGroupCreate")}
+                    textColor="#4f5f6f"
+                    contentStyle={{
+                        paddingVertical: 8,
+                    }}
+                    labelStyle={{
+                        fontSize: 16,
+                        fontWeight: "bold",
+                    }}
+                    style={{
+                        borderRadius: 12,
+                    }}
+                >
+                    家計簿グループを作成
+                </Button>
+            </Surface>
+
             {/* 承認画面へボタン */}
             {canApprove && (
                 <Surface

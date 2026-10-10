@@ -583,6 +583,13 @@
               "isRequired": true,
               "attributes": []
             },
+            "createdByOwner": {
+              "name": "createdByOwner",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
             "groupOwners": {
               "name": "groupOwners",
               "isArray": true,
