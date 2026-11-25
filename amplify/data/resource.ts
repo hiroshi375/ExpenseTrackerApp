@@ -18,26 +18,30 @@ const schema = a
             color: a.string(),
         }),
 
-        Transaction: a.model({
-            type: a.string().required(),
-            amount: a.float().required(),
-            categoryId: a.id().required(),
-            title: a.string().required(),
-            description: a.string(),
-            paymentMethod: a.string().required(),
-            transactionDate: a.datetime().required(),
-            receiptImage: a.string(),
-            storeName: a.string(),
-            tags: a.string(),
-            approvalStatus: a.string(),
+        Transaction: a
+            .model({
+                type: a.string().required(),
+                amount: a.float().required(),
+                categoryId: a.id().required(),
+                title: a.string().required(),
+                description: a.string(),
+                paymentMethod: a.string().required(),
+                transactionDate: a.datetime().required(),
+                receiptImage: a.string(),
+                storeName: a.string(),
+                tags: a.string(),
+                approvalStatus: a.string(),
 
-            userId: a.id().required(),
-            approvedBy: a.string(),
-            approvedAt: a.datetime(),
-            rejectedBy: a.string(),
-            rejectedAt: a.datetime(),
-            approvalComment: a.string(),
-        }),
+                userId: a.id().required(),
+                groupId: a.id(),
+                createdByUserId: a.string(),
+                approvedBy: a.string(),
+                approvedAt: a.datetime(),
+                rejectedBy: a.string(),
+                rejectedAt: a.datetime(),
+                approvalComment: a.string(),
+            })
+            .authorization((allow) => [allow.authenticated()]),
 
         HouseholdGroup: a
             .model({

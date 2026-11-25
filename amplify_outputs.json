@@ -313,6 +313,20 @@
               "isRequired": true,
               "attributes": []
             },
+            "groupId": {
+              "name": "groupId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": false,
+              "attributes": []
+            },
+            "createdByUserId": {
+              "name": "createdByUserId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
             "approvedBy": {
               "name": "approvedBy",
               "isArray": false,
