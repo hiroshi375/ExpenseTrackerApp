@@ -6,6 +6,9 @@
 .amplify/
 #amplify_outputs.json
 
+# Local sandbox connection settings
+/amplify_outputs.sandbox.json
+
 # CDK outputs
 cdk.out/
 .amplify/artifacts/cdk.out/
