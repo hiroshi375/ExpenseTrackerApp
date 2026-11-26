@@ -1,8 +1,9 @@
 import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { env } from "../../../.amplify/generated/env/receiptRecognition";
 
 import {
-  BedrockRuntimeClient,
-  InvokeModelCommand,
+    BedrockRuntimeClient,
+    InvokeModelCommand,
 } from "@aws-sdk/client-bedrock-runtime";
 import { Buffer } from "buffer";
 
@@ -10,97 +11,107 @@ import { Buffer } from "buffer";
 // AWS Clients
 // -----------------------------
 const s3 = new S3Client({
-  region: "ap-northeast-1",
+    region: "ap-northeast-1",
 });
 
 const bedrock = new BedrockRuntimeClient({
-  region: "ap-northeast-1",
+    region: "ap-northeast-1",
 });
 
 // -----------------------------
 // Lambda Handler
 // -----------------------------
 export const handler = async (event: any) => {
-  console.log("=== receiptRecognition START ===");
+    console.log("=== receiptRecognition START ===");
 
-  try {
-    // -----------------------------
-    // Request Body
-    // -----------------------------
-    const body = JSON.parse(event.body || "{}");
+    try {
+        // -----------------------------
+        // Request Body
+        // -----------------------------
+        const body = JSON.parse(event.body || "{}");
 
-    const imageKey = body.imageKey;
+        const imageKey = body.imageKey;
 
-    console.log("imageKey =", imageKey);
+        console.log("imageKey =", imageKey);
 
-    if (!imageKey) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({
-          ok: false,
-          errorCode: "INVALID_REQUEST",
-          error: "imageKey is required",
-        }),
-      };
-    }
+        if (!imageKey) {
+            return {
+                statusCode: 400,
+                body: JSON.stringify({
+                    ok: false,
+                    errorCode: "INVALID_REQUEST",
+                    error: "imageKey is required",
+                }),
+            };
+        }
 
-    // -----------------------------
-    // S3 Object取得
-    // -----------------------------
-    const image = await s3.send(
-      new GetObjectCommand({
-        Bucket: process.env.BUCKET_NAME!,
+        // -----------------------------
+        // S3 Object取得
+        // -----------------------------
 
-        Key: imageKey,
-      }),
-    );
+        // Amplify Gen2による環境別S3バケット名の取得
+        const bucketName = env.EXPENSE_STORAGE_BUCKET_NAME;
 
-    if (!image.Body) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({
-          ok: false,
-          errorCode: "IMAGE_NOT_FOUND",
-          error: "Image body is empty",
-        }),
-      };
-    }
+        if (
+            !bucketName ||
+            bucketName === "<value will be resolved during runtime>"
+        ) {
+            throw new Error("S3 bucket name could not be resolved.");
+        }
 
-    // -----------------------------
-    // byte[]
-    // -----------------------------
-    const bytes = await image.Body.transformToByteArray();
+        const image = await s3.send(
+            new GetObjectCommand({
+                Bucket: bucketName,
+                Key: imageKey,
+            }),
+        );
 
-    // -----------------------------
-    // サイズチェック
-    // -----------------------------
-    const MAX_SIZE = 5 * 1024 * 1024;
+        if (!image.Body) {
+            return {
+                statusCode: 400,
+                body: JSON.stringify({
+                    ok: false,
+                    errorCode: "IMAGE_NOT_FOUND",
+                    error: "Image body is empty",
+                }),
+            };
+        }
 
-    if (bytes.length > MAX_SIZE) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({
-          ok: false,
-          errorCode: "IMAGE_TOO_LARGE",
-          error: "画像サイズが5MBを超えています",
-        }),
-      };
-    }
+        // -----------------------------
+        // byte[]
+        // -----------------------------
+        const bytes = await image.Body.transformToByteArray();
 
-    // -----------------------------
-    // base64変換
-    // -----------------------------
-    const base64 = Buffer.from(bytes).toString("base64");
+        // -----------------------------
+        // サイズチェック
+        // -----------------------------
+        const MAX_SIZE = 5 * 1024 * 1024;
 
-    // -----------------------------
-    // Bedrock Prompt
-    // -----------------------------
-    const prompt = {
-      anthropic_version: "bedrock-2023-05-31",
+        if (bytes.length > MAX_SIZE) {
+            return {
+                statusCode: 400,
+                body: JSON.stringify({
+                    ok: false,
+                    errorCode: "IMAGE_TOO_LARGE",
+                    error: "画像サイズが5MBを超えています",
+                }),
+            };
+        }
 
-      max_tokens: 3000,
+        // -----------------------------
+        // base64変換
+        // -----------------------------
+        const base64 = Buffer.from(bytes).toString("base64");
 
-      system: `
+        // -----------------------------
+        // Bedrock Prompt
+        // -----------------------------
+        const prompt = {
+            anthropic_version: "bedrock-2023-05-31",
+
+            max_tokens: 3000,
+
+            system: `
 あなたはレシート解析AIです。
 
 画像からレシート情報を抽出してください。
@@ -131,27 +142,27 @@ Markdownは禁止です。
 }
 `,
 
-      messages: [
-        {
-          role: "user",
+            messages: [
+                {
+                    role: "user",
 
-          content: [
-            {
-              type: "image",
+                    content: [
+                        {
+                            type: "image",
 
-              source: {
-                type: "base64",
+                            source: {
+                                type: "base64",
 
-                media_type: "image/jpeg",
+                                media_type: "image/jpeg",
 
-                data: base64,
-              },
-            },
+                                data: base64,
+                            },
+                        },
 
-            {
-              type: "text",
+                        {
+                            type: "text",
 
-              text: `
+                            text: `
 このレシート画像から以下を抽出してください。
 
 タイトル(件名)
@@ -193,126 +204,126 @@ Markdownは禁止です。
 趣味
 保険・年金
 `,
-            },
-          ],
-        },
-      ],
-    };
+                        },
+                    ],
+                },
+            ],
+        };
 
-    // -----------------------------
-    // Bedrock Invoke
-    // -----------------------------
-    const result = await bedrock.send(
-      new InvokeModelCommand({
-        modelId: "jp.anthropic.claude-haiku-4-5-20251001-v1:0",
+        // -----------------------------
+        // Bedrock Invoke
+        // -----------------------------
+        const result = await bedrock.send(
+            new InvokeModelCommand({
+                modelId: "jp.anthropic.claude-haiku-4-5-20251001-v1:0",
 
-        body: JSON.stringify(prompt),
+                body: JSON.stringify(prompt),
 
-        contentType: "application/json",
-      }),
-    );
+                contentType: "application/json",
+            }),
+        );
 
-    // -----------------------------
-    // Parse Response
-    // -----------------------------
-    const responseBody = JSON.parse(new TextDecoder().decode(result.body));
+        // -----------------------------
+        // Parse Response
+        // -----------------------------
+        const responseBody = JSON.parse(new TextDecoder().decode(result.body));
 
-    const content = responseBody.content?.[0]?.text ?? "";
+        const content = responseBody.content?.[0]?.text ?? "";
 
-    console.log("RAW =", content);
+        console.log("RAW =", content);
 
-    // -----------------------------
-    // markdown除去
-    // -----------------------------
-    const cleaned = content
-      .replace(/```json/g, "")
-      .replace(/```/g, "")
-      .trim();
+        // -----------------------------
+        // markdown除去
+        // -----------------------------
+        const cleaned = content
+            .replace(/```json/g, "")
+            .replace(/```/g, "")
+            .trim();
 
-    // -----------------------------
-    // JSON Parse
-    // -----------------------------
-    const parsed = JSON.parse(cleaned);
+        // -----------------------------
+        // JSON Parse
+        // -----------------------------
+        const parsed = JSON.parse(cleaned);
 
-    // -----------------------------
-    // Success
-    // -----------------------------
-    return {
-      statusCode: 200,
+        // -----------------------------
+        // Success
+        // -----------------------------
+        return {
+            statusCode: 200,
 
-      body: JSON.stringify({
-        ok: true,
+            body: JSON.stringify({
+                ok: true,
 
-        data: {
-          storeName: parsed.storeName ?? "",
-          paymentMethod: parsed.paymentMethod ?? "",
-          amount: parsed.amount ?? parsed.totalAmount ?? 0,
-          totalAmount: parsed.totalAmount ?? parsed.amount ?? 0,
-          transactionDate: parsed.transactionDate ?? "",
-          category: parsed.category ?? "other",
-          title: parsed.title ?? "",
-          description: parsed.description ?? "",
-          items: Array.isArray(parsed.items)
-            ? parsed.items.map((item: any) => ({
-                title: item.title ?? "",
-                amount: Number(item.amount ?? 0),
-                category: item.category ?? "other",
-                description: item.description ?? "",
-              }))
-            : [],
-        },
-      }),
-    };
-  } catch (e: any) {
-    console.error("ERROR =", e);
+                data: {
+                    storeName: parsed.storeName ?? "",
+                    paymentMethod: parsed.paymentMethod ?? "",
+                    amount: parsed.amount ?? parsed.totalAmount ?? 0,
+                    totalAmount: parsed.totalAmount ?? parsed.amount ?? 0,
+                    transactionDate: parsed.transactionDate ?? "",
+                    category: parsed.category ?? "other",
+                    title: parsed.title ?? "",
+                    description: parsed.description ?? "",
+                    items: Array.isArray(parsed.items)
+                        ? parsed.items.map((item: any) => ({
+                              title: item.title ?? "",
+                              amount: Number(item.amount ?? 0),
+                              category: item.category ?? "other",
+                              description: item.description ?? "",
+                          }))
+                        : [],
+                },
+            }),
+        };
+    } catch (e: any) {
+        console.error("ERROR =", e);
 
-    // -----------------------------
-    // Bedrock Validation
-    // -----------------------------
-    if (e?.name === "ValidationException") {
-      return {
-        statusCode: 400,
+        // -----------------------------
+        // Bedrock Validation
+        // -----------------------------
+        if (e?.name === "ValidationException") {
+            return {
+                statusCode: 400,
 
-        body: JSON.stringify({
-          ok: false,
+                body: JSON.stringify({
+                    ok: false,
 
-          errorCode: "VALIDATION_ERROR",
+                    errorCode: "VALIDATION_ERROR",
 
-          error: "入力データが不正です",
-        }),
-      };
+                    error: "入力データが不正です",
+                }),
+            };
+        }
+
+        // -----------------------------
+        // JSON Parse Error
+        // -----------------------------
+        if (e instanceof SyntaxError) {
+            return {
+                statusCode: 500,
+
+                body: JSON.stringify({
+                    ok: false,
+
+                    errorCode: "JSON_PARSE_ERROR",
+
+                    error: "AIレスポンス解析失敗",
+                }),
+            };
+        }
+
+        // -----------------------------
+        // Unknown
+        // -----------------------------
+        return {
+            statusCode: 500,
+
+            body: JSON.stringify({
+                ok: false,
+
+                errorCode: "INTERNAL_SERVER_ERROR",
+
+                error: "サーバーエラーが発生しました",
+            }),
+        };
     }
-
-    // -----------------------------
-    // JSON Parse Error
-    // -----------------------------
-    if (e instanceof SyntaxError) {
-      return {
-        statusCode: 500,
-
-        body: JSON.stringify({
-          ok: false,
-
-          errorCode: "JSON_PARSE_ERROR",
-
-          error: "AIレスポンス解析失敗",
-        }),
-      };
-    }
-
-    // -----------------------------
-    // Unknown
-    // -----------------------------
-    return {
-      statusCode: 500,
-
-      body: JSON.stringify({
-        ok: false,
-
-        errorCode: "INTERNAL_SERVER_ERROR",
-
-        error: "サーバーエラーが発生しました",
-      }),
-    };
-  }
 };

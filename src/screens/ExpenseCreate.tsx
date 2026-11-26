@@ -28,7 +28,7 @@ type Props = NativeStackScreenProps<RootStackParamList, "ExpenseCreate">;
 const client = generateClient<Schema>();
 
 const RECEIPT_RECOGNITION_API_URL =
-    "https://1q0jg5lg49.execute-api.ap-northeast-1.amazonaws.com/receiptRecognition";
+    process.env.EXPO_PUBLIC_RECEIPT_RECOGNITION_API_URL?.trim() ?? "";
 
 export default function ExpenseCreate({ route }: Props) {
     const navigation =
@@ -194,6 +194,12 @@ export default function ExpenseCreate({ route }: Props) {
     // OCR API呼び出し
     // -----------------------------
     const callReceiptRecognition = async (imageKey: string) => {
+        if (!RECEIPT_RECOGNITION_API_URL) {
+            throw new Error(
+                "この環境ではレシート認識APIが設定されていません。",
+            );
+        }
+
         const res = await fetch(RECEIPT_RECOGNITION_API_URL, {
             method: "POST",
             headers: {
@@ -241,6 +247,14 @@ export default function ExpenseCreate({ route }: Props) {
         const manipulated = await normalizeReceiptImage(asset);
 
         setImageUri(manipulated.uri);
+
+        if (!RECEIPT_RECOGNITION_API_URL) {
+            Alert.alert(
+                "レシート認識",
+                "この環境ではレシート認識機能は利用できません。",
+            );
+            return;
+        }
 
         const imageKey = await uploadReceiptImage(manipulated.uri);
 
