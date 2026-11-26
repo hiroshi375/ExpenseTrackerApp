@@ -8,6 +8,7 @@
             "developmentClient": true,
             "distribution": "internal",
             "env": {
+                "APP_VARIANT": "existing",
                 "EAS_NO_FROZEN_LOCKFILE": "1"
             }
         },
@@ -17,12 +18,14 @@
                 "buildType": "apk"
             },
             "env": {
+                "APP_VARIANT": "existing",
                 "EAS_NO_FROZEN_LOCKFILE": "1"
             }
         },
         "production": {
             "autoIncrement": true,
             "env": {
+                "APP_VARIANT": "existing",
                 "EAS_NO_FROZEN_LOCKFILE": "1"
             }
         }
