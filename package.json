@@ -71,6 +71,12 @@
   "overrides": {
     "@aws-sdk/lib-dynamodb": {
       "@aws-sdk/util-dynamodb": "3.996.5"
+    },
+    "@aws-amplify/graphql-docs-generator": {
+      "handlebars": "4.7.10"
+    },
+    "react-devtools-core": {
+      "shell-quote": "1.11.0"
     }
   }
 }
