@@ -1,3 +1,4 @@
+import "../config/amplifyInit";
 import { useNavigation } from "@react-navigation/native";
 import type {
     NativeStackNavigationProp,

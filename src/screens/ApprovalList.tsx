@@ -1,3 +1,4 @@
+import "../config/amplifyInit";
 import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { generateClient } from "aws-amplify/data";

@@ -1,3 +1,4 @@
+import "../config/amplifyInit";
 import { getCurrentUser } from "aws-amplify/auth";
 import { generateClient } from "aws-amplify/data";
 import { useState } from "react";

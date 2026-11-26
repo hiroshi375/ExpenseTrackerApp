@@ -1,3 +1,4 @@
+import "../config/amplifyInit";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
     NavigationContainer,

@@ -1,16 +1,10 @@
+import "./src/config/amplifyInit";
+
 import { withAuthenticator } from "@aws-amplify/ui-react-native";
-import { Amplify } from "aws-amplify";
 import { I18n } from "aws-amplify/utils";
-import "react-native-get-random-values";
 import { Provider as PaperProvider } from "react-native-paper";
-import { amplifyOutputs, appVariant } from "./src/config/amplifyConfig";
+
 import RootNavigator from "./src/navigation/RootNavigator";
-
-Amplify.configure(amplifyOutputs);
-
-if (__DEV__) {
-    console.info(`[ExpenseTrackerApp] Environment: ${appVariant}`);
-}
 
 I18n.putVocabularies({
     ja: {

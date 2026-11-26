@@ -1,3 +1,4 @@
+import "../config/amplifyInit";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { getCurrentUser } from "aws-amplify/auth";
 import { generateClient } from "aws-amplify/data";
