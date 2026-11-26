@@ -22,6 +22,7 @@ import {
 } from "react-native-paper";
 import { DatePickerModal } from "react-native-paper-dates";
 import type { Schema } from "../../amplify/data/resource";
+import { isSandbox } from "../config/amplifyConfig";
 import type { RootStackParamList } from "../navigation/RootNavigator";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ExpenseCreate">;
@@ -30,6 +31,8 @@ const client = generateClient<Schema>();
 
 const RECEIPT_RECOGNITION_API_URL =
     process.env.EXPO_PUBLIC_RECEIPT_RECOGNITION_API_URL?.trim() ?? "";
+const canUseReceiptRecognition =
+    !isSandbox && RECEIPT_RECOGNITION_API_URL !== "";
 
 export default function ExpenseCreate({ route }: Props) {
     const navigation =
@@ -195,9 +198,9 @@ export default function ExpenseCreate({ route }: Props) {
     // OCR API呼び出し
     // -----------------------------
     const callReceiptRecognition = async (imageKey: string) => {
-        if (!RECEIPT_RECOGNITION_API_URL) {
+        if (!canUseReceiptRecognition) {
             throw new Error(
-                "この環境ではレシート認識APIが設定されていません。",
+                "この環境ではレシート認識機能は利用できません。",
             );
         }
 
@@ -249,7 +252,7 @@ export default function ExpenseCreate({ route }: Props) {
 
         setImageUri(manipulated.uri);
 
-        if (!RECEIPT_RECOGNITION_API_URL) {
+        if (!canUseReceiptRecognition) {
             Alert.alert(
                 "レシート認識",
                 "この環境ではレシート認識機能は利用できません。",
