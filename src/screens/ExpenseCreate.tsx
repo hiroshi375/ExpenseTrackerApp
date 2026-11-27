@@ -252,6 +252,10 @@ export default function ExpenseCreate({ route }: Props) {
 
         setImageUri(manipulated.uri);
 
+        if (isSandbox) {
+            return;
+        }
+
         if (!canUseReceiptRecognition) {
             Alert.alert(
                 "レシート認識",
@@ -421,7 +425,9 @@ export default function ExpenseCreate({ route }: Props) {
             // 新しく選択・撮影した画像があればそれを使う
             // なければ既存のレシート画像パスを使う
             const savedReceiptImagePath =
-                newReceiptImagePath || receiptImagePath;
+                isSandbox && imageUri
+                    ? await uploadReceiptImage(imageUri)
+                    : newReceiptImagePath || receiptImagePath;
 
             // -----------------------------
             // Transaction作成(編集の場合は更新)
@@ -640,7 +646,7 @@ export default function ExpenseCreate({ route }: Props) {
                                     marginTop: 8,
                                 }}
                             >
-                                解析中...
+                                {isSandbox ? "処理中..." : "解析中..."}
                             </Text>
                         </View>
                     )}
