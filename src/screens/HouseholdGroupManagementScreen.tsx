@@ -9,6 +9,7 @@ import {
     RadioButton,
     Text,
 } from "react-native-paper";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import type { RootStackParamList } from "../navigation/RootNavigator";
 import {
@@ -241,7 +242,7 @@ export default function HouseholdGroupManagementScreen({ navigation }: Props) {
                 }}
             />
 
-            <View style={styles.footer}>
+            <SafeAreaView edges={["bottom"]} style={styles.footer}>
                 <Button
                     mode="contained"
                     icon="plus"
@@ -252,7 +253,7 @@ export default function HouseholdGroupManagementScreen({ navigation }: Props) {
                 >
                     新しいグループを作成
                 </Button>
-            </View>
+            </SafeAreaView>
         </View>
     );
 }

@@ -1,7 +1,30 @@
 import { a, defineData, type ClientSchema } from "@aws-amplify/backend";
+import { householdGroupApi } from "../functions/householdGroupApi/resource";
 
 const schema = a
     .schema({
+        HouseholdGroupAccess: a.customType({
+            groupId: a.id().required(),
+            role: a.string().required(),
+        }),
+
+        checkHouseholdGroupAccess: a
+            .query()
+            .arguments({ groupId: a.id().required() })
+            .returns(a.ref("HouseholdGroupAccess").required())
+            .authorization((allow) => [allow.authenticated()])
+            .handler(a.handler.function(householdGroupApi)),
+
+        createHouseholdGroupWithOwner: a
+            .mutation()
+            .arguments({
+                name: a.string().required(),
+                displayName: a.string(),
+            })
+            .returns(a.id().required())
+            .authorization((allow) => [allow.authenticated()])
+            .handler(a.handler.function(householdGroupApi)),
+
         User: a.model({
             userId: a.id().required(),
             username: a.string().required(),
@@ -55,13 +78,14 @@ const schema = a
                 status: a.enum(["ACTIVE", "ARCHIVED"]),
             })
             .identifier(["groupId"])
+            .disableOperations(["mutations"])
             .secondaryIndexes((index) => [
                 index("createdByUserId").queryField(
                     "listHouseholdGroupsByCreatedByUserId",
                 ),
             ])
             .authorization((allow) => [
-                allow.ownerDefinedIn("createdByOwner"),
+                allow.ownerDefinedIn("createdByOwner").to(["read"]),
                 allow.ownersDefinedIn("memberOwners").to(["read"]),
             ]),
 
@@ -101,8 +125,8 @@ const schema = a
                 allow.ownerDefinedIn("memberOwner").to(["read"]),
                 // 同じグループのメンバー
                 allow.ownersDefinedIn("groupOwners").to(["read"]),
-                // Phase 1では追加したユーザーが管理
-                allow.ownerDefinedIn("createdByOwner"),
+                // 所属を追加したユーザーにも参照だけを許可
+                allow.ownerDefinedIn("createdByOwner").to(["read"]),
             ]),
     })
     .authorization((allow) => [allow.authenticated()]);

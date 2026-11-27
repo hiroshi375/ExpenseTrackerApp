@@ -41,15 +41,11 @@ export default function HouseholdGroupCreateScreen({ navigation }: Props) {
         try {
             setSaving(true);
 
-            const result = await createHouseholdGroup({
+            const groupId = await createHouseholdGroup({
                 name: trimmedName,
             });
 
-            await setCurrentHouseholdGroupId(result.group.groupId);
-
-            console.log("[HouseholdGroupCreate] group:", result.group);
-
-            console.log("[HouseholdGroupCreate] owner member:", result.member);
+            await setCurrentHouseholdGroupId(groupId);
 
             Alert.alert("作成完了", `「${trimmedName}」を作成しました。`, [
                 {
